@@ -56,7 +56,7 @@ def lcm(a: int, b: int) -> int:
     :param b: натуральное число b
     :return: значение наименьшего общего кратного
     """
-    return a // gcd_recursive(a, b) * b
+    return (a * b) // gcd_recursive(a, b)
 
 
 def main():
