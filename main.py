@@ -31,7 +31,9 @@ def gcd_iterative_fast(a: int, b: int) -> int:
     :param b: целое число b
     :return: значение наибольшего общего делителя
     """
-    pass
+    while b:
+        a, b = b, a % b
+    return a
 
 
 def lcm(a: int, b: int) -> int:
