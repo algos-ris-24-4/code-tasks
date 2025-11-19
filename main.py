@@ -25,12 +25,14 @@ def fibonacci_iter(n: int) -> int:
     if n == 1 or n == 2:
         return 1
 
-    seq = [0] * (n + 1)
+    seq = [0] * n
+    seq[0] = 1
     seq[1] = 1
-    seq[2] = 1
-    for i in range(3, n + 1):
+
+    for i in range(2, n):
         seq[i] = seq[i - 1] + seq[i - 2]
-    return seq[n]
+
+    return seq[n - 1]
 
 
 def fibonacci(n: int) -> int:
@@ -39,10 +41,12 @@ def fibonacci(n: int) -> int:
     :param n: порядковый номер числа Фибоначчи
     :return: число Фибоначчи
     """
-    prev, curr = 0, 1
-    for i in range(n):
+    if n == 1 or n == 2:
+        return 1
+    prev, curr = 1, 1
+    for i in range(3, n + 1):
         prev, curr = curr, prev + curr
-    return prev
+    return curr
 
 
 @profile
