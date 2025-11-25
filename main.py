@@ -1,3 +1,4 @@
+import copy
 def calculate_determinant(matrix: list[list[int]]) -> int:
     """Вычисляет определитель целочисленной квадратной матрицы
 
@@ -12,14 +13,17 @@ def calculate_determinant(matrix: list[list[int]]) -> int:
         return matrix[0][0]
     
     det = 0
-    for idx, item in enumerate(matrix):
-       reduced matrix = get_reduced_matrix(matrix, 0, idx)
-       det += item * (-1)**idx * calculate_determinant(reduced matrix)
+    for idx, item in enumerate(matrix[0]):
+       reduced_matrix = get_reduced_matrix(matrix, 0, idx)
+       det += item * (-1)**idx * calculate_determinant(reduced_matrix)
     return det
 
-def get_reduced_matrix(matrix, row idx, col idx):
-    pass
-
+def get_reduced_matrix(matrix, row_idx, col_idx):
+    ans_matrix = copy.deepcopy(matrix)
+    for i in range(len(matrix)):
+        ans_matrix[i] = ans_matrix[i][:col_idx] + ans_matrix[i][col_idx + 1:]
+    ans_matrix = ans_matrix[:row_idx] + ans_matrix[row_idx + 1:]
+    return ans_matrix
 
 
 def validate(matrix):
