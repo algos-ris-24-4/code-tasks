@@ -5,6 +5,18 @@ Case = namedtuple("Case", ["matrix", "det"])
 MAX_RANDOM_VALUE = 10
 MIN_RANDOM_VALUE = 1
 
+def determinant(n):
+    size = len(n)
+    if size == 1:
+        return n[0][0]
+    if size == 2:
+        return n[0][0] * n[1][1] - n[0][1] * n[1][0]
+    total = 0
+    for col in range(size):
+        minor = [row[:col] + row[col + 1:] for row in n[1:]]
+        total+=((-1)**col) * n[0][col]*determinant(minor)
+    return total
+
 
 def generate_matrix_and_det(order) -> Case:
     """Генерирует случайную квадратную целочисленную матрицу с заранее
@@ -15,9 +27,15 @@ def generate_matrix_and_det(order) -> Case:
     меньше 1
     :return: именованный кортеж Case с полями matrix, det
     """
-    pass
-
-
+    if not isinstance(order, int) or order <1:
+        raise ValueError("Ошибка.")
+    matrix = [
+        [random.randint(MIN_RANDOM_VALUE, MAX_RANDOM_VALUE) for i in range(order)]
+        for i in range(order)
+    ]
+    det = determinant(matrix)
+    return Case(matrix, det)
+        
 def main():
     n = 10
     print(f"Генерация матрицы порядка {n}")
