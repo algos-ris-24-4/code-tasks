@@ -1,17 +1,9 @@
 def calculate_determinant(matrix: list[list[int]]) -> int:
     n = len(matrix)
     det = 0
-    
-    if matrix is None or n == 0:
-        raise Exception("Матрица не может быть None или пустой")
-    
-    if any(any(not isinstance(x, int) for x in row) for row in matrix):
-        raise Exception("Все элементы матрицы должны быть целыми числами")
-    
-    for row in matrix:
-        if len(row) != n:
-            raise Exception("Матрица не является квадратной")
         
+    validate_matrix(matrix, n)
+    
     if n == 1:
         return matrix[0][0]
     
@@ -29,10 +21,22 @@ def calculate_determinant(matrix: list[list[int]]) -> int:
 
     return det
 
-
+def validate_matrix(matrix: list[list[int]], n) -> int:
+    if matrix is None or n == 0:
+        raise Exception("Матрица не может быть None или пустой")
+    
+    if any(any(not isinstance(x, int) for x in row) for row in matrix):
+        raise Exception("Все элементы матрицы должны быть целыми числами")
+    
+    for row in matrix:
+        if len(row) != n:
+            raise Exception("Матрица не является квадратной")
+        
+    return True
+    
 
 def main():
-    matrix = [[1, 2], [3, 4]]
+    matrix = [[1, 2, 3], [3, 4, 5], [5,6,7]]
     print("Матрица")
     for row in matrix:
         print(row)
