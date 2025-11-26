@@ -42,7 +42,7 @@ def validate_matrix_det(matrix):
         if(len(i) != l):
             raise Exception("Not square matrix")
         for j in i:
-            if(not type(j) in int):
+            if(not type(j) is int):
                 raise Exception("Not int")
 
 def get_reduce_mat(mat, i):
