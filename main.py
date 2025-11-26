@@ -24,11 +24,15 @@ def validate(a, b, c, matrix):
     """Проверяет матрицу на правильность и кидает Exception"""
     if matrix is None:
         raise Exception("Матрица не может быть None")
+    if not isinstance(matrix, list):
+        raise Exception("Матрица должны быть списком")
     if len(matrix) == 0:
         raise Exception("Матрица не заполнена")
     n = len(matrix)
     
-    for i, row in enumerate(matrix):
+    for row in matrix:
+        if not isinstance(row, list):
+            raise Exception("Строка матрицы должна быть списком")
         if row is None or len(row) != len(matrix):
             raise Exception("Матрица должна быть квадратной")
     for i in range(n):
