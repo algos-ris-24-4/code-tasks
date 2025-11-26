@@ -7,16 +7,13 @@ def calculate_determinant(matrix: list[list[int]]) -> int:
     :return: значение определителя
     """
 
-    #валидация
-    validate(matrix)
-    #рекурсия
+    validate_matrix_det(matrix)    
     return calculate_determinant_rec(matrix)
 
 def calculate_determinant_rec(matrix):
     """
     Рекурсивная часть вычисления определителя
     """
-    #база рекурсии
     if len(matrix) == 1:
         return matrix[0][0]
     det = 0
@@ -26,16 +23,26 @@ def calculate_determinant_rec(matrix):
     return det
 
 
-def validate(matrix):
+def validate_matrix(matrix):   
+    """
+    Проверка переменной на тип матрицы
+    """
+    if not type(matrix) is list:
+        raise Exception("param is not matrix")
+    if not type(matrix[0]) is list:
+        raise Exception("param is not matrix")
+
+def validate_matrix_det(matrix):
     """
     Проверка матрицы на возможность вычисления определителя
-    """
+    """    
+    validate_matrix(matrix)
     l = len(matrix)
     for i in matrix:
         if(len(i) != l):
-            raise Exception("Not square")
+            raise Exception("Not square matrix")
         for j in i:
-            if(type(j).__name__ != "int" ):
+            if(not type(j) in int):
                 raise Exception("Not int")
 
 def get_reduce_mat(mat, i):
