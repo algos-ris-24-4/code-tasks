@@ -6,36 +6,26 @@ def get_tridiagonal_determinant(matrix: list[list[int]]) -> int:
     """
     n = len(matrix)
     
-    #Проверка на матрицу 1x1
+    """Проверка на матрицу 1x1"""
     if n == 1:
         return matrix[0][0]
     
-    #Проверка на матрицу 2x2
+    """Проверка на матрицу 2x2"""
     if n == 2:
         return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]
     
-    #Извлекаем диагонали из матрицы
-    mainDiag = []  #главная диагональ
-    upperDiag = []  #над главной
-    bottomDiag = []  #под главной
     
-    for i in range(n):
-        mainDiag.append(matrix[i][i])
-    
-    for i in range(n-1):
-        upperDiag.append(matrix[i][i+1])
-    
-    for i in range(1, n):
-        bottomDiag.append(matrix[i][i-1])
-    
-    #Вычисляем определитель по рекуррентной формуле
-    det1 = mainDiag[0]  #det для n=1
-    det2 = mainDiag[0] * mainDiag[1] - upperDiag[0] * bottomDiag[0] #det для n=2
+    a = matrix[0][0]
+    b = matrix[0][1]
+    c = matrix[1][0]
+    """Вычисляем определитель по рекуррентной формуле"""
+    det1 = a  #"""det для n=1"""
+    det2 =a * a - b * c# """det для n=2"""
 
-    #Вычисляем для матриц большего размера
+    """Вычисляем для матриц большего размера"""
     for i in range(2, n):
-        detCurrent = mainDiag[i] * det2 - upperDiag[i-1] * bottomDiag[i-1] * det1
-        #Обновляем значения для следующего шага
+        detCurrent = a * det2 - b * c * det1
+        #"""Обновляем значения для следующего шага"""
         det1 = det2
         det2 = detCurrent
     
@@ -53,4 +43,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
