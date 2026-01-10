@@ -41,8 +41,37 @@ def get_invest_distribution(
     profit - максимально возможная прибыль от инвестиций,
     distribution - распределение инвестиций между проектами.
     """
-    pass
+    dp = [] # Создаем матрицу для результатов дп
+    length_row = len(profit_matrix[0])
+    length_column = len(profit_matrix)
+    for _ in range(0,length_column + 1): # Кол-во строк +1 тк добавлена строка с распределением нулевого кол-ва денег
+        row = [(0,0)] * (length_row) # Кол-во столбцов = размерности строки profit_matrix (-1 стобец - объединение проектов, +1 нулевая сумма для проекта)
+        dp.append(row) 
+    
+    for sum in range(1,len(profit_matrix)+1): # Заполним изначально столбец для проекта А
+        dp[sum][0] = profit_matrix[sum-1][0] , sum
 
+    for number_project in range(1,length_row): # Внешний цикл по проектам (с 1 тк проект А уже заполнен)
+        for step_sum in range(0,length_column): # Цикл по распределяемым суммам
+
+            dp_result = [(0,0)] # Хранилище для выбора максимального распределения для конкретной суммы (20: 10A+10B or 20A or 20B). Хранит сумму и количесво денег вложенных в проект
+            for x in range(0,step_sum + 2): # расчет всех распределений для конкретной суммы между двумя проектами (+2 тк идет сдвиг из-за добавлении строки - суммы ноль, а в изначальной таблице table[0] = 10, поэтому везде будет +1)
+                if x==0:  # Если сумма вкладываемая в этот проект = 0, то вся сумма вкладывается в предподсчитанный
+                    dp_result.append((dp[step_sum-x+1][number_project-1][0], 0))
+                else: # Перебор всех вариантов для суммы (хранится в виде (сумма,кол-во частей отданных в проект))
+                    dp_result.append(((profit_matrix[x-1][number_project] + dp[step_sum-x+1][number_project-1][0]), x))
+            dp[step_sum+1][number_project] = max(dp_result,key=lambda x: x[0]) # из всех сумм конкретного размера, выбираем самую выгодную
+
+    # Восстановление шагов инвестиций
+    # Начиная из финального знач. двигаемя к нулевому (начальному) путем вычитания израсходованных частей денег
+    sum_money = length_column
+    steps = [0] * length_row
+    for number_project in range(length_row-1,-1,-1):
+        number_invest = dp[sum_money][number_project][1]
+        steps[number_project] = number_invest
+        sum_money -= number_invest
+
+    return (dp[-1][-1][0], steps)
 
 def main():
     profit_matrix = [
