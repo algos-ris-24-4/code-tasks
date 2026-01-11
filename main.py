@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from strenum import StrEnum
+from enum import StrEnum
 
 
 class ErrorMessages(StrEnum):
@@ -72,9 +72,7 @@ def validate(profit_matrix: list[list[int]]):
                 prev_profit = profit
 
 
-def get_invest_distribution(
-    profit_matrix: list[list[int]],
-) -> Result:
+def get_invest_distribution(profit_matrix: list[list[int]]) -> Result:
     """Рассчитывает максимально возможную прибыль и распределение инвестиций
     между несколькими проектами. Инвестиции распределяются кратными частями.
 
@@ -92,61 +90,56 @@ def get_invest_distribution(
 
     validate(profit_matrix)
 
-    dp = []  # Создаем матрицу для результатов дп
-    length_row = len(profit_matrix[0])
-    length_column = len(profit_matrix)
-    for _ in range(
-        0, length_column + 1
-    ):  # Кол-во строк +1 тк добавлена строка с распределением нулевого кол-ва денег
-        row = [(0, 0)] * (
-            length_row
-        )  # Кол-во столбцов = размерности строки profit_matrix (-1 стобец - объединение проектов, +1 нулевая сумма для проекта)
-        dp.append(row)
+    projects_cnt = len(profit_matrix[0])
+    invest_lvl_max = len(profit_matrix)
 
-    for sum in range(
-        1, len(profit_matrix) + 1
-    ):  # Заполним изначально столбец для проекта А
-        dp[sum][0] = profit_matrix[sum - 1][0], sum
+    # Создаем матрицу для результатов дп: кортеж (максимальная прибыль, сумма инвестиций в проект)
+    # Кол-во строк +1 тк добавлена строка с распределением нулевого кол-ва денег
+    # Кол-во столбцов = размерности строки profit_matrix (-1 стобец - объединение проектов, +1 нулевая сумма для проекта)
+    dp = [[(0, 0)] * projects_cnt for _ in range(0, invest_lvl_max + 1)]
 
-    for number_project in range(
-        1, length_row
-    ):  # Внешний цикл по проектам (с 1 тк проект А уже заполнен)
-        for step_sum in range(0, length_column):  # Цикл по распределяемым суммам
+    # Заполним заранее столбец для проекта А
+    for invest_sum in range(1, len(profit_matrix) + 1):    
+        dp[invest_sum][0] = profit_matrix[invest_sum - 1][0], invest_sum
 
-            dp_result = [
-                (0, 0)
-            ]  # Хранилище для выбора максимального распределения для конкретной суммы (20: 10A+10B or 20A or 20B). Хранит сумму и количесво денег вложенных в проект
-            for x in range(
-                0, step_sum + 2
-            ):  # расчет всех распределений для конкретной суммы между двумя проектами (+2 тк идет сдвиг из-за добавлении строки - суммы ноль, а в изначальной таблице table[0] = 10, поэтому везде будет +1)
-                if (
-                    x == 0
-                ):  # Если сумма вкладываемая в этот проект = 0, то вся сумма вкладывается в предподсчитанный
-                    dp_result.append((dp[step_sum - x + 1][number_project - 1][0], 0))
-                else:  # Перебор всех вариантов для суммы (хранится в виде (сумма,кол-во частей отданных в проект))
-                    dp_result.append(
-                        (
-                            (
-                                profit_matrix[x - 1][number_project]
-                                + dp[step_sum - x + 1][number_project - 1][0]
-                            ),
-                            x,
-                        )
-                    )
-            dp[step_sum + 1][number_project] = max(
-                dp_result, key=lambda x: x[0]
-            )  # из всех сумм конкретного размера, выбираем самую выгодную
+    # Внешний цикл по проектам (с 1 тк проект А уже заполнен)
+    for project_num in range(1, projects_cnt):     
 
-    # Восстановление шагов инвестиций
-    # Начиная из финального знач. двигаемя к нулевому (начальному) путем вычитания израсходованных частей денег
-    sum_money = length_column
-    steps = [0] * length_row
-    for number_project in range(length_row - 1, -1, -1):
-        number_invest = dp[sum_money][number_project][1]
-        steps[number_project] = number_invest
-        sum_money -= number_invest
+        # Цикл по распределяемым суммам
+        for curr_budget in range(0, invest_lvl_max):  
 
-    return (dp[-1][-1][0], steps)
+            # Хранилище для выбора максимального распределения для конкретной суммы (20: 10A+10B or 20A or 20B). 
+            # Хранит  и количесво денег вложенных в проект
+            dp_calc_table = [(0, 0)] 
+        
+            # Рассчет всех распределений для конкретной суммы между двумя проектами (+2 тк идет сдвиг из-за добавлении строки - суммы ноль, а в изначальной таблице table[0] = 10, поэтому везде будет +1)
+            for curr_invest in range(0, curr_budget + 2):
+                curr_profit = dp[curr_budget - curr_invest + 1][project_num - 1][0]
+                if curr_invest == 0: 
+                    # вся сумма вкладывается в последний подсчитанный
+                    dp_calc_table.append((curr_profit, 0))
+                else:  
+                    # Перебор всех вариантов для суммы (хранится в виде (сумма, кол-во частей отданных в проект))
+                    dp_calc_table.append((profit_matrix[curr_invest - 1][project_num] + curr_profit, curr_invest))
+
+            # из всех сумм конкретного размера, выбираем самую выгодную
+            dp[curr_budget + 1][project_num] = max(dp_calc_table, key=lambda pair: pair[0])
+
+    distr_steps = get_distribution(invest_lvl_max, projects_cnt, dp)
+    return Result(profit=dp[-1][-1][0], distribution=distr_steps)
+
+
+def get_distribution(invest_lvl_max: int, projects_cnt: int, dp: list[list[int]]) -> list[int]:
+    """Восстановление пути распределения инвестиций по проектам"""
+    invest_sum = invest_lvl_max
+    steps = [0] * projects_cnt
+
+    for project_num in range(projects_cnt - 1, -1, -1):
+        invested = dp[invest_sum][project_num][1]
+        steps[project_num] = invested
+        invest_sum -= invested
+
+    return steps
 
 
 def main():
