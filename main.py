@@ -55,7 +55,20 @@ def _calculate_min_coins(
         - min_coins: список минимального количества монет для каждой суммы
         - coin_used: список последних использованных монет для каждой суммы
     """
-    pass
+
+    min_coins = [float("inf")] * (amount+1)
+    coin_used = [0] * (amount+1)
+
+    min_coins[0] = 0
+    
+    for i in range(1,amount+1):
+        for coin in coins:
+            if coin <= i:
+                if min_coins[i - coin] + 1 < min_coins[i]:
+                    min_coins[i] = min_coins[i - coin] + 1
+                    coin_used[i] = coin
+    
+    return min_coins, coin_used
 
 
 def _restore_combination(coin_used: List[int], amount: int) -> List[int]:
@@ -69,7 +82,15 @@ def _restore_combination(coin_used: List[int], amount: int) -> List[int]:
     Returns:
         Список монет, составляющих решение
     """
-    pass
+    combination = []
+    cur_sum = amount
+    while cur_sum > 0:
+        coin = coin_used[cur_sum]
+        combination.append(coin)
+        cur_sum -= coin
+    
+    return combination
+
 
 
 def _validate_input(coins: List[int], amount: int) -> None:
@@ -84,7 +105,26 @@ def _validate_input(coins: List[int], amount: int) -> None:
         TypeError: Если тип данных некорректный
         ValueError: Если значения некорректные
     """
-    pass
+
+    if amount is None:
+        raise TypeError(ErrorMessages.NOT_INT_AMOUNT)
+    if not isinstance(amount, int):
+        raise TypeError(ErrorMessages.NOT_INT_AMOUNT)
+    if amount < 0:
+        raise ValueError(ErrorMessages.WRONG_AMOUNT)
+
+    if coins is None:
+        raise TypeError(ErrorMessages.NOT_LIST_COINS)
+    if not isinstance(coins, list):
+        raise TypeError(ErrorMessages.NOT_LIST_COINS)
+    if not coins:
+        raise ValueError(ErrorMessages.WRONG_COINS)
+
+    for coin in coins:
+        if not isinstance(coin, int):
+            raise TypeError(ErrorMessages.NOT_INT_COIN)
+        if coin <= 0:
+            raise ValueError(ErrorMessages.NEGATIVE_COIN)
 
 
 def main():
