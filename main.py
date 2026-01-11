@@ -24,6 +24,54 @@ class ProfitValueError(Exception):
         super().__init__(message)
 
 
+def validate(profit_matrix: list[list[int]]):
+    """
+    Валидирует таблицу с распределением прибыли от проектов, поступающую на вход.
+    
+    :param profit_matrix: Таблица с распределением прибыли от проектов в
+    зависимости от уровня инвестиций. Проекты указаны в столбцах, уровни
+    инвестиций в строках.
+    :raise ValueError: Если таблица прибыли от проектов не является
+    прямоугольной матрицей с числовыми значениями.
+    :raise ProfitValueError: Если значение прибыли отрицательно или убывает
+    с ростом инвестиций.
+    """
+
+    # Проверка типа и количества уровней инвестиций (строки)
+    if not isinstance(profit_matrix, list) or len(profit_matrix) == 0:
+        raise ValueError(ErrorMessages.WRONG_MATRIX)
+
+    # Проверка типа и количества проектов (столбцы)
+    if not isinstance(profit_matrix[0], list) or len(profit_matrix[0]) == 0:
+        raise ValueError(ErrorMessages.WRONG_MATRIX)
+
+    invest_lvl_cnt = len(profit_matrix)
+    project_cnt = len(profit_matrix[0]) 
+
+    # Проверка прямоугольности
+    for ivest_lvl_row in profit_matrix:
+        if len(ivest_lvl_row) != project_cnt:
+            raise ValueError(ErrorMessages.WRONG_MATRIX)
+
+    # Проверка значений прибыли
+    for project in range(project_cnt):
+        prev_profit = -1
+
+        for invest_lvl in range(invest_lvl_cnt):
+            profit = profit_matrix[invest_lvl][project]
+
+            if not isinstance(profit, int):
+                raise ValueError(ErrorMessages.WRONG_MATRIX)
+            
+            if profit < 0:
+                raise ProfitValueError(ErrorMessages.NEG_PROFIT, project, invest_lvl)
+            
+            if profit < prev_profit:
+                raise ProfitValueError(ErrorMessages.DECR_PROFIT, project, invest_lvl)
+            else:
+                prev_profit = profit
+
+
 def get_invest_distribution(
     profit_matrix: list[list[int]],
 ) -> Result:
@@ -41,6 +89,9 @@ def get_invest_distribution(
     profit - максимально возможная прибыль от инвестиций,
     distribution - распределение инвестиций между проектами.
     """
+
+    validate(profit_matrix)
+
     dp = []  # Создаем матрицу для результатов дп
     length_row = len(profit_matrix[0])
     length_column = len(profit_matrix)
