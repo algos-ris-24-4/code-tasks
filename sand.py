@@ -37,19 +37,23 @@ def validate(profit_matrix: list[list[int]]):
     с ростом инвестиций.
     """
 
+    # Проверка типа и количества уровней инвестиций (строки)
     if not isinstance(profit_matrix, list) or len(profit_matrix) == 0:
         raise ValueError(ErrorMessages.WRONG_MATRIX)
 
+    # Проверка типа и количества проектов (столбцы)
     if not isinstance(profit_matrix[0], list) or len(profit_matrix[0]) == 0:
         raise ValueError(ErrorMessages.WRONG_MATRIX)
 
     invest_lvl_cnt = len(profit_matrix)
     project_cnt = len(profit_matrix[0]) 
 
+    # Проверка прямоугольности
     for ivest_lvl_row in profit_matrix:
         if len(ivest_lvl_row) != project_cnt:
             raise ValueError(ErrorMessages.WRONG_MATRIX)
 
+    # Проверка значений прибыли
     for project in range(project_cnt):
         prev_profit = -1
 
@@ -86,50 +90,18 @@ def get_invest_distribution(profit_matrix: list[list[int]]) -> Result:
 
     validate(profit_matrix)
 
-    projects_cnt = len(profit_matrix[0])
-    invest_lvl_max = len(profit_matrix)
+    
 
-    # кол-во строк +1 тк добавлена строка с распределением нулевого кол-ва денег
-    dp = [[(0, 0)] * projects_cnt for _ in range(0, invest_lvl_max + 1)]
 
-    # заполняем столбец А
-    for invest_sum in range(1, len(profit_matrix) + 1):    
-        dp[invest_sum][0] = profit_matrix[invest_sum - 1][0], invest_sum
 
-    # с 1 тк проект А уже заполнен
-    for project_num in range(1, projects_cnt):     
 
-        for curr_budget in range(0, invest_lvl_max):  
-
-            # хранилище для выбора максимального распределения для конкретной суммы (20: 10A+10B or 20A or 20B). 
-            dp_calc_table = [(0, 0)] 
-        
-            # +2 тк идет сдвиг из-за добавлении строки - суммы ноль, а в изначальной таблице table[0] = 10, поэтому везде будет +1)
-            for curr_invest in range(0, curr_budget + 2):
-                curr_profit = dp[curr_budget - curr_invest + 1][project_num - 1][0] # прибыль предподсчитанного (альтернтаивного) проекта
-                if curr_invest == 0: 
-                    dp_calc_table.append((curr_profit, 0))
-                else:  
-                    dp_calc_table.append((profit_matrix[curr_invest - 1][project_num] + curr_profit, curr_invest))
-                    
-            # выбираем самое прибыльное распределение для данного бюджета
-            dp[curr_budget + 1][project_num] = max(dp_calc_table, key=lambda pair: pair[0])
-
-    distr = get_distribution(invest_lvl_max, projects_cnt, dp)
-    return Result(profit=dp[-1][-1][0], distribution=distr)
+    return
 
 
 def get_distribution(invest_lvl_max: int, projects_cnt: int, dp: list[list[int]]) -> list[int]:
     """Восстановление пути распределения инвестиций по проектам"""
-    invest_sum = invest_lvl_max
-    distr = [0] * projects_cnt
 
-    for project_num in range(projects_cnt - 1, -1, -1):
-        invested = dp[invest_sum][project_num][1]
-        distr[project_num] = invested
-        invest_sum -= invested
-
-    return distr
+    ...
 
 
 def main():
