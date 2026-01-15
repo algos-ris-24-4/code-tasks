@@ -9,29 +9,26 @@ class BruteForceSolver(KnapsackAbstractSolver):
         best_cost = 0
         best_weight = float('inf')
         best_combination = 0
-        n = self.item_cnt
 
         #перебираем все комбинации
-        total_combinations = 1
-        for j in range(n):
-            total_combinations *= 2
+        total_combinations = 2 ** self.item_cnt
 
         for j in range(total_combinations):
-            current_weight = 0
-            current_cost = 0
+
+            selected_items = [False] * self.item_cnt
             copy = j
+            
+            for i in range(self.item_cnt):
+                if (j >> i) & 1:
+                    selected_items[i] = True
+            
+            current_weight = self.get_weight(selected_items)
+            current_cost = self.get_cost(selected_items)
+            
 
-            for i in range(n):
-                bit = copy % 2
-                copy = copy // 2
-                if bit == 1:
-                    current_weight += self.weights[i]
-                    current_cost += self.costs[i]
-                    if current_weight > self.weight_limit:
-                        break
-
-            if current_weight > self.weight_limit:
+            if current_cost == 0:
                 continue
+                
             if (current_cost > best_cost or
                     (current_cost == best_cost and current_weight < best_weight)):
                 best_cost = current_cost
@@ -41,10 +38,8 @@ class BruteForceSolver(KnapsackAbstractSolver):
         #формируем список выбранных предметов
         best_items = []
         copy = best_combination
-        for i in range(n):
-            bit = copy % 2
-            copy = copy // 2
-            if bit == 1:
+        for i in range(self.item_cnt):
+            if (best_combination >> i) & 1:
                 best_items.append(i)
 
         return KnapsackSolution(cost=best_cost, items=best_items)
