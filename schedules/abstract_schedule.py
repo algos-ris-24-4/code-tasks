@@ -57,6 +57,8 @@ class AbstractSchedule(ABC):
     @property
     def tasks(self) -> tuple[Task]:
         """Возвращает исходный список задач для составления расписания."""
+        if(len(self._tasks) == 1):
+            return tuple([self._tasks[0]])
         return tuple(self._tasks)
 
     @property

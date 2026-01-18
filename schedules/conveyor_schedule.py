@@ -51,18 +51,134 @@ class ConveyorSchedule(AbstractSchedule):
     @property
     def duration(self) -> float:
         """Возвращает общую продолжительность расписания."""
-        return self._executor_schedule[0][-1].end
+        return max(self._executor_schedule[0][-1].end,self._executor_schedule[1][-1].end)
 
     def __fill_schedule(self, tasks: list[StagedTask]) -> None:
         """Процедура составляет расписание из элементов ScheduleItem для каждого
         исполнителя, согласно алгоритму Джонсона."""
-        pass
+        # Очищаем текущее расписание для обоих исполнителей
+        for i in range(self.executor_count):
+            self._executor_schedule[i].clear()
+        
+        # Если нет задач, оставляем пустое расписание
+        if not tasks:
+            return
+        
+        # Очищаем текущее расписание
+        self._executor_schedule = [[], []]
+        
+        # Временные переменные для отслеживания времени окончания последней задачи
+        time_executor1 = 0
+        
+        for task in tasks:
+            # Для первого исполнителя
+            start_executor1 = time_executor1
+            duration_executor1 = task.stage_duration(0)
+            schedule_item1 = ScheduleItem(task, start_executor1, duration_executor1)
+            self._executor_schedule[0].append(schedule_item1)
+            time_executor1 += duration_executor1
+
+        schedule_item2 = ScheduleItem(None, 0, self._executor_schedule[0][0].end)
+        self._executor_schedule[1].append(schedule_item2)
+
+
+        duration_executor2 = tasks[0].stage_duration(1)
+        schedule_item2 = ScheduleItem(tasks[0], self._executor_schedule[0][0].end, duration_executor2)
+        self._executor_schedule[1].append(schedule_item2)
+        i = 1
+
+
+        for task in tasks[1:]:            
+            duration_executor2 = task.stage_duration(1)
+            start_executor2 = self._executor_schedule[0][i].end
+            if(self._executor_schedule[1][i-1].end > start_executor2):
+                empty = ScheduleItem(None, start_executor2, self._executor_schedule[1][i-1].end - start_executor2)
+                self._executor_schedule[1].append(empty)
+                start_executor2 = self._executor_schedule[1][i-1].end 
+            schedule_item2 = ScheduleItem(task, start_executor2, duration_executor2)
+            
+            self._executor_schedule[1].append(schedule_item2)
+            i+=1
+        
+        if(self._executor_schedule[1][-1].end > self._executor_schedule[0][-1].end):
+            empty_duration = self._executor_schedule[1][-1].end - self._executor_schedule[0][-1].end
+            schedule_item2 = ScheduleItem(None, self._executor_schedule[0][-1].end, empty_duration)
+            self._executor_schedule[0].append(schedule_item2)
+
 
     @staticmethod
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
         """Возвращает отсортированный список задач для применения
         алгоритма Джонсона."""
-        pass
+         # Разделяем задачи на две группы
+        group1 = []  # Задачи, где время на первом этапе ≤ времени на втором
+        group2 = []  # Задачи, где время на первом этапе > времени на втором
+        
+        for task in tasks:
+            if task.stage_duration(0) <= task.stage_duration(1):
+                group1.append(task)
+            else:
+                group2.append(task)
+    
+        # Сортируем group1 по возрастанию времени на первом этапе
+        group1_sorted = sorted(group1, key=lambda t: t.stage_duration(0))
+        
+        # Сортируем group2 по убыванию времени на втором этапе
+        group2_sorted = sorted(group2, key=lambda t: t.stage_duration(1), reverse=True)
+        
+        # Объединяем
+        return group1_sorted + group2_sorted
+
+    def add_task(self, task: StagedTask) -> None:
+        """Добавляет задачу в расписание и пересчитывает его.
+        
+        :param task: Задача для добавления
+        :raise ScheduleArgumentError: Если задача некорректна
+        """
+        self.__validate_single_task(task)
+        
+        # Добавляем задачу в список задач
+        self._tasks.append(task)
+        
+        # Пересчитываем расписание
+        self.__recalculate_schedule()
+
+    def remove_task(self, task_name: str) -> None:
+        """Удаляет задачу из расписания по имени и пересчитывает его.
+        
+        :param task_name: Имя задачи для удаления
+        :raise ScheduleArgumentError: Если задача с таким именем не найдена
+        """
+        task_to_remove = None
+        for task in self._tasks:
+            if task.name == task_name:
+                task_to_remove = task
+                break
+        
+        if task_to_remove is None:
+            raise ScheduleArgumentError(
+                ErrorTemplates.TASK_NOT_FOUND.format(task_name)
+            )
+        
+        # Удаляем задачу
+        self._tasks.remove(task_to_remove)
+        
+        # Проверяем, что остались задачи
+        if len(self._tasks) == 0:
+            self._executor_schedule = [[], []]
+        else:
+            # Пересчитываем расписание
+            self.__recalculate_schedule()
+
+    def __recalculate_schedule(self) -> None:
+        """Пересчитывает расписание с текущим списком задач."""
+        sorted_tasks = self.__sort_tasks(self._tasks)
+        self.__fill_schedule(sorted_tasks)
+
+    #публичный метод для тестирования
+    @staticmethod
+    def get_sorted_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
+        return ConveyorSchedule.__sort_tasks(tasks=tasks)
 
     @staticmethod
     def __validate_params(tasks: list[StagedTask]) -> None:
@@ -80,28 +196,3 @@ class ConveyorSchedule(AbstractSchedule):
                     ErrorTemplates.INVALID_STAGE_CNT.format(idx)
                 )
 
-
-if __name__ == "__main__":
-    print("Пример использования класса ConveyorSchedule")
-
-    # Инициализируем входные данные для составления расписания
-    tasks = [
-        StagedTask("a", [7, 2]),
-        StagedTask("b", [3, 4]),
-        StagedTask("c", [2, 5]),
-        StagedTask("d", [4, 1]),
-        StagedTask("e", [6, 6]),
-        StagedTask("f", [5, 3]),
-        StagedTask("g", [4, 5]),
-    ]
-
-    # Инициализируем экземпляр класса Schedule
-    # при этом будет рассчитано расписание для каждого исполнителя
-    schedule = ConveyorSchedule(tasks)
-
-    # Выведем в консоль полученное расписание
-    print(schedule)
-    for i in range(schedule.executor_count):
-        print(f"\nРасписание для исполнителя # {i + 1}:")
-        for schedule_item in schedule.get_schedule_for_executor(i):
-            print(schedule_item)
