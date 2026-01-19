@@ -80,25 +80,34 @@ class ConveyorSchedule(AbstractSchedule):
 
         schedule_item2 = ScheduleItem(None, 0, self._executor_schedule[0][0].end)
         self._executor_schedule[1].append(schedule_item2)
-
+        i= 1
 
         duration_executor2 = tasks[0].stage_duration(1)
         schedule_item2 = ScheduleItem(tasks[0], self._executor_schedule[0][0].end, duration_executor2)
         self._executor_schedule[1].append(schedule_item2)
-        i = 1
+        count_tasks = 1
+        i += 1
 
 
         for task in tasks[1:]:            
             duration_executor2 = task.stage_duration(1)
-            start_executor2 = self._executor_schedule[0][i].end
-            if(self._executor_schedule[1][i-1].end > start_executor2):
-                empty = ScheduleItem(None, start_executor2, self._executor_schedule[1][i-1].end - start_executor2)
+
+            
+            start_executor2 = self._executor_schedule[1][i - 1].end
+
+            empty_duration = self._executor_schedule[0][count_tasks].end - start_executor2
+            if(empty_duration > 0):
+                empty = ScheduleItem(None, start_executor2, empty_duration)
                 self._executor_schedule[1].append(empty)
-                start_executor2 = self._executor_schedule[1][i-1].end 
-            schedule_item2 = ScheduleItem(task, start_executor2, duration_executor2)
+                start_executor2 = self._executor_schedule[1][i-1].end
+                i+=1
+            else:
+                empty_duration = 0
+            schedule_item2 = ScheduleItem(task, start_executor2 + empty_duration, duration_executor2)
             
             self._executor_schedule[1].append(schedule_item2)
             i+=1
+            count_tasks += 1
         
         if(self._executor_schedule[1][-1].end > self._executor_schedule[0][-1].end):
             empty_duration = self._executor_schedule[1][-1].end - self._executor_schedule[0][-1].end
@@ -135,7 +144,7 @@ class ConveyorSchedule(AbstractSchedule):
         :param task: Задача для добавления
         :raise ScheduleArgumentError: Если задача некорректна
         """
-        self.__validate_single_task(task)
+        self.__validate_params([task])
         
         # Добавляем задачу в список задач
         self._tasks.append(task)
@@ -143,7 +152,7 @@ class ConveyorSchedule(AbstractSchedule):
         # Пересчитываем расписание
         self.__recalculate_schedule()
 
-    def remove_task(self, task_name: str) -> None:
+    def remove_task(self, del_task: StagedTask) -> None:
         """Удаляет задачу из расписания по имени и пересчитывает его.
         
         :param task_name: Имя задачи для удаления
@@ -151,13 +160,13 @@ class ConveyorSchedule(AbstractSchedule):
         """
         task_to_remove = None
         for task in self._tasks:
-            if task.name == task_name:
+            if task.name == del_task.name:
                 task_to_remove = task
                 break
         
         if task_to_remove is None:
             raise ScheduleArgumentError(
-                ErrorTemplates.TASK_NOT_FOUND.format(task_name)
+                ErrorTemplates.TASK_NOT_FOUND.format(del_task.name)
             )
         
         # Удаляем задачу
@@ -177,7 +186,7 @@ class ConveyorSchedule(AbstractSchedule):
 
     #публичный метод для тестирования
     @staticmethod
-    def get_sorted_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
+    def __get_sorted_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
         return ConveyorSchedule.__sort_tasks(tasks=tasks)
 
     @staticmethod
@@ -194,5 +203,5 @@ class ConveyorSchedule(AbstractSchedule):
             if value.stage_count != 2:
                 raise ScheduleArgumentError(
                     ErrorTemplates.INVALID_STAGE_CNT.format(idx)
-                )
+                ) 
 

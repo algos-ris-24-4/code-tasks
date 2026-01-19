@@ -85,7 +85,7 @@ class TestConveyorSchedule(unittest.TestCase):
             ScheduleItem(None, 0, 1),
             ScheduleItem(task_a, 1, 2),
         )
-        #self.assertEqual(tuple([task_a]), schedule.tasks)
+        self.assertEqual(tuple([task_a]), schedule.tasks)
         self.assertEqual(1, schedule.task_count)
         self.assertEqual(3, schedule.duration)
         result_schedule = schedule.get_schedule_for_executor(0)
@@ -107,7 +107,7 @@ class TestConveyorSchedule(unittest.TestCase):
             ScheduleItem(task_b, 1, 2),
             ScheduleItem(task_a, 3, 1),
         )
-        #self.assertEqual(tuple([task_a, task_b]), schedule.tasks)
+        self.assertEqual(tuple([task_a, task_b]), schedule.tasks)
         self.assertEqual(2, schedule.task_count)
         self.assertEqual(4, schedule.duration)
         self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
@@ -135,7 +135,7 @@ class TestConveyorSchedule(unittest.TestCase):
             ScheduleItem(None, 8, 1),
             ScheduleItem(task_c, 9, 6),
         )
-        #self.assertEqual(tuple([task_a, task_b, task_c]), schedule.tasks)
+        self.assertEqual(tuple([task_a, task_b, task_c]), schedule.tasks)
         self.assertEqual(3, schedule.task_count)
         self.assertEqual(15, schedule.duration)
         self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
@@ -160,7 +160,7 @@ class TestConveyorSchedule(unittest.TestCase):
             ScheduleItem(task_b, 11, 3),
             ScheduleItem(task_a, 14, 1),
         )
-        #self.assertEqual(tuple([task_a, task_b, task_c]), schedule.tasks)
+        self.assertEqual(tuple([task_a, task_b, task_c]), schedule.tasks)
         self.assertEqual(3, schedule.task_count)
         self.assertEqual(15, schedule.duration)
         self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
@@ -185,7 +185,7 @@ class TestConveyorSchedule(unittest.TestCase):
             ScheduleItem(task_c, 9, 5),
             ScheduleItem(task_a, 14, 1),
         )
-        #self.assertEqual(tuple([task_a, task_b, task_c]), schedule.tasks)
+        self.assertEqual(tuple([task_a, task_b, task_c]), schedule.tasks)
         self.assertEqual(3, schedule.task_count)
         self.assertEqual(15, schedule.duration)
         self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
@@ -217,7 +217,7 @@ class TestConveyorSchedule(unittest.TestCase):
             ScheduleItem(None, 17, 1),
             ScheduleItem(task_b, 18, 2),
         )
-        #self.assertEqual(ordered_tasks, schedule.tasks)
+        self.assertEqual(ordered_tasks, schedule.tasks)
         self.assertEqual(5, schedule.task_count)
         self.assertEqual(20, schedule.duration)
         self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
@@ -258,12 +258,103 @@ class TestConveyorSchedule(unittest.TestCase):
             ScheduleItem(None, 29, 2),
             ScheduleItem(task_d, 31, 1),
         )
-        #self.assertEqual(tasks, schedule.tasks)
+        self.assertEqual(tasks, schedule.tasks)
+        self.assertEqual(7, schedule.task_count)
+        self.assertEqual(32, schedule.duration)
+        self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
+        self.assertEqual(stage2_schedule, schedule.get_schedule_for_executor(1))
+    
+    def test_sevenfold_and_add_task(self):
+        """Проверяет корректность составления расписания для семи задач."""
+        task_a = StagedTask("a", [7, 2])
+        task_b = StagedTask("b", [3, 4])
+        task_c = StagedTask("c", [2, 5])
+        task_d = StagedTask("d", [4, 1])
+        task_e = StagedTask("e", [6, 6])
+        task_f = StagedTask("f", [5, 3])
+        task_g = StagedTask("g", [4, 5])
+        schedule = ConveyorSchedule(
+            [task_a, task_b, task_c, task_d, task_e, task_f]
+        )
+        schedule.add_task(task_g)
+        tasks = tuple([task_a, task_b, task_c, task_d, task_e, task_f,task_g])
+
+        stage1_schedule = (
+            ScheduleItem(task_c, 0, 2),
+            ScheduleItem(task_b, 2, 3),
+            ScheduleItem(task_g, 5, 4),
+            ScheduleItem(task_e, 9, 6),
+            ScheduleItem(task_f, 15, 5),
+            ScheduleItem(task_a, 20, 7),
+            ScheduleItem(task_d, 27, 4),
+            ScheduleItem(None, 31, 1),
+        )
+
+        stage2_schedule = (
+            ScheduleItem(None, 0, 2),
+            ScheduleItem(task_c, 2, 5),
+            ScheduleItem(task_b, 7, 4),
+            ScheduleItem(task_g, 11, 5),
+            ScheduleItem(task_e, 16, 6),
+            ScheduleItem(task_f, 22, 3),
+            ScheduleItem(None, 25, 2),
+            ScheduleItem(task_a, 27, 2),
+            ScheduleItem(None, 29, 2),
+            ScheduleItem(task_d, 31, 1),
+        )
+        new_tasks = schedule.tasks
+        self.assertEqual(tasks, new_tasks)
         self.assertEqual(7, schedule.task_count)
         self.assertEqual(32, schedule.duration)
         self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
         self.assertEqual(stage2_schedule, schedule.get_schedule_for_executor(1))
 
+
+    def test_sevenfold_and_delete_task(self):
+        """Проверяет корректность составления расписания для семи задач."""
+        task_a = StagedTask("a", [7, 2])
+        task_b = StagedTask("b", [3, 4])
+        task_c = StagedTask("c", [2, 5])
+        task_d = StagedTask("d", [4, 1])
+        task_e = StagedTask("e", [6, 6])
+        task_f = StagedTask("f", [5, 3])
+        task_g = StagedTask("g", [4, 5])
+        task_h =  StagedTask("h", [4,5])
+        schedule = ConveyorSchedule(
+            [task_a, task_b, task_c, task_d, task_e, task_f,task_g,task_h]
+        )
+        schedule.remove_task(task_h)
+        tasks = tuple([task_a, task_b, task_c, task_d, task_e, task_f,task_g])
+
+        stage1_schedule = (
+            ScheduleItem(task_c, 0, 2),
+            ScheduleItem(task_b, 2, 3),
+            ScheduleItem(task_g, 5, 4),
+            ScheduleItem(task_e, 9, 6),
+            ScheduleItem(task_f, 15, 5),
+            ScheduleItem(task_a, 20, 7),
+            ScheduleItem(task_d, 27, 4),
+            ScheduleItem(None, 31, 1),
+        )
+        
+        stage2_schedule = (
+            ScheduleItem(None, 0, 2),
+            ScheduleItem(task_c, 2, 5),
+            ScheduleItem(task_b, 7, 4),
+            ScheduleItem(task_g, 11, 5),
+            ScheduleItem(task_e, 16, 6),
+            ScheduleItem(task_f, 22, 3),
+            ScheduleItem(None, 25, 2),
+            ScheduleItem(task_a, 27, 2),
+            ScheduleItem(None, 29, 2),
+            ScheduleItem(task_d, 31, 1),
+        )
+        new_tasks = schedule.tasks
+        self.assertEqual(tasks, new_tasks)
+        self.assertEqual(7, schedule.task_count)
+        self.assertEqual(32, schedule.duration)
+        self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
+        self.assertEqual(stage2_schedule, schedule.get_schedule_for_executor(1))
 
 if __name__ == "__main__":
     unittest.main()
