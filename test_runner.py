@@ -1,6 +1,6 @@
 from unittest import TestLoader, TestSuite, TextTestRunner
 
-from tests.problems.sorting_problem.test_some_sort import TestSomeSort
+from tests.problems.sorting_problem.test_merge_sort import TestSomeSort
 
 
 def suite():
