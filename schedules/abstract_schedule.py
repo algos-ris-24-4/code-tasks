@@ -85,6 +85,46 @@ class AbstractSchedule(ABC):
         """
         self.__validate_executor_idx(executor_idx)
         return tuple(self._executor_schedule[executor_idx])
+    
+    def get_downtime_for_executor(self, executor_idx: int) -> float:
+        """Возвращает общее время простоя для указанного исполнителя.
+
+        :param executor_idx: Индекс исполнителя.
+        :raise ScheduleArgumentError: Если индекс исполнителя не является целым
+         положительным числом или превышает количество исполнителей.
+        :return: Общее время простоя исполнителя.
+        """
+        self.__validate_executor_idx(executor_idx)
+        
+        count_downtime = 0
+        schedule = self._executor_schedule[executor_idx]
+      
+        first_item = schedule[0]
+        if first_item.start > 0:
+            count_downtime += first_item.start
+        
+        for i in range(len(schedule) - 1):
+            current_item = schedule[i]
+            next_item = schedule[i + 1]
+            
+            if next_item.start > current_item.end:
+                count_downtime += next_item.start - current_item.end
+        
+        last_item = schedule[-1]
+        if last_item.end < self.duration:
+            count_downtime += self.duration - last_item.end
+        
+        return count_downtime
+
+    def get_total_downtime(self) -> float:
+        """Возвращает общее время простоя для всех исполнителей.
+
+        :return: Общее время простоя всех исполнителей.
+        """
+        total_count = 0
+        for executor_idx in range(self.executor_count):
+            total_count += self.get_downtime_for_executor(executor_idx)
+        return total_count
 
     @staticmethod
     def __validate_params(tasks: list[Task]) -> None:

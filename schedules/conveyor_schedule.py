@@ -56,13 +56,62 @@ class ConveyorSchedule(AbstractSchedule):
     def __fill_schedule(self, tasks: list[StagedTask]) -> None:
         """Процедура составляет расписание из элементов ScheduleItem для каждого
         исполнителя, согласно алгоритму Джонсона."""
-        pass
+
+        self._executor_schedule[0] = []
+        self._executor_schedule[1] = []
+        
+        time_executor1 = 0
+        time_executor2 = 0
+
+        for task in tasks:
+            item1 = ScheduleItem(task, time_executor1, task.stage_durations[0])
+            self._executor_schedule[0].append(item1)
+
+            actual_start_stage2 = max(time_executor1 + task.stage_durations[0], time_executor2)
+
+            if actual_start_stage2 > time_executor2:
+                downtime_duration = actual_start_stage2 - time_executor2
+                downtime_item = ScheduleItem(None, time_executor2, downtime_duration)
+                self._executor_schedule[1].append(downtime_item)
+
+            item2 = ScheduleItem(task, actual_start_stage2, task.stage_durations[1])
+            self._executor_schedule[1].append(item2)
+
+            time_executor1 += task.stage_durations[0]
+            time_executor2 = actual_start_stage2 + task.stage_durations[1]
+
+        if time_executor1 < time_executor2:
+            downtime_duration = time_executor2 - time_executor1
+            downtime_item = ScheduleItem(None, time_executor1, downtime_duration)
+            self._executor_schedule[0].append(downtime_item)
+
 
     @staticmethod
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
         """Возвращает отсортированный список задач для применения
         алгоритма Джонсона."""
-        pass
+        group1 = []
+        group2 = []
+        
+        for task in tasks:
+            if task.stage_duration(0) <= task.stage_duration(1):
+                group1.append(task)
+            else:
+                group2.append(task)
+
+        length_group1 = len(group1)
+        for i in range(length_group1):
+            for j in range(0, length_group1 - i - 1):
+                if group1[j].stage_durations[0] > group1[j + 1].stage_durations[0]:
+                    group1[j], group1[j + 1] = group1[j + 1], group1[j]
+    
+        length_group2 = len(group2)
+        for i in range(length_group2):
+            for j in range(0, length_group2 - i - 1):
+                if group2[j].stage_durations[1] < group2[j + 1].stage_durations[1]:
+                    group2[j], group2[j + 1] = group2[j + 1], group2[j]
+
+        return group1 + group2
 
     @staticmethod
     def __validate_params(tasks: list[StagedTask]) -> None:
