@@ -52,17 +52,64 @@ class ConveyorSchedule(AbstractSchedule):
     def duration(self) -> float:
         """Возвращает общую продолжительность расписания."""
         return self._executor_schedule[0][-1].end
-
+    
     def __fill_schedule(self, tasks: list[StagedTask]) -> None:
-        """Процедура составляет расписание из элементов ScheduleItem для каждого
-        исполнителя, согласно алгоритму Джонсона."""
-        pass
+
+        startTimes = [0, 0]
+        
+        for task in tasks:
+            
+            duration1 = task.stage_duration(0)
+            
+            item1 = ScheduleItem(task, startTimes[0], duration1)
+            self._executor_schedule[0].append(item1)
+
+            startTime2 = max(startTimes[0] + duration1, startTimes[1])
+
+            duration2 = task.stage_duration(1)
+
+            item2 = ScheduleItem(task, startTime2, duration2)
+            self._executor_schedule[1].append(item2)
+
+            startTimes[0] += duration1
+            startTimes[1] = startTime2 + duration2
 
     @staticmethod
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
-        """Возвращает отсортированный список задач для применения
-        алгоритма Джонсона."""
-        pass
+        
+        remainingTasks = tasks.copy()
+        sortedTasks = []
+        
+        while remainingTasks:
+            min_time = 999999999
+            min_task = None
+            min_stage = -1
+            min_index = -1
+            
+            for i in range(len(remainingTasks)):
+                task = remainingTasks[i]
+                time1 = task.stage_duration(0)
+                time2 = task.stage_duration(1)
+                
+                if time1 < min_time:
+                    min_time = time1
+                    min_task = task
+                    min_stage = 0
+                    min_index = i
+                
+                if time2 < min_time:
+                    min_time = time2
+                    min_task = task
+                    min_stage = 1
+                    min_index = i
+            
+            if min_stage == 0:
+                sortedTasks.insert(0, min_task)
+            else:
+                sortedTasks.append(min_task)
+            remainingTasks.pop(min_index)
+        return sortedTasks
+
 
     @staticmethod
     def __validate_params(tasks: list[StagedTask]) -> None:

@@ -104,3 +104,50 @@ class AbstractSchedule(ABC):
             raise ScheduleArgumentError(ErrorMessages.EXECUTOR_NOT_INT)
         if executor_idx >= self.executor_count:
             raise ScheduleArgumentError(ErrorMessages.EXECUTOR_OUT_OF_RANGE)
+
+    def create_mermaid_code_for_gant_diagramm(self, title: str = "Диграмма Ганта"): 
+        """Строит код mermaid для диаграммы Ганта"""
+        # Инициализация диграммы
+        mermaid_code = ["```mermaid", f"gantt", f"    title{title}"]
+        mermaid_code.append(f"    dateFormat X") 
+        mermaid_code.append(f"    axisFormat %d") 
+        
+        # Проходимся по всем исполнителям 
+        for executor_idx in range(self.executor_count):
+            section_name = f"Конвейер {executor_idx + 1}"
+            mermaid_code.append(f"    section {section_name}")
+            
+            # Получаем задачи для исполнителя
+            schedule_items = self.get_schedule_for_executor(executor_idx)
+            prev_task_id = None
+            
+            # Обработка задач
+            for i in range(len(schedule_items)):
+                item = schedule_items[i]  
+                task_id = f"e{executor_idx}_t{i}"
+                start_num = item.start  # начало
+                duration_num = item.duration  # продолжительность 
+                
+                # Зависимости от предыдущих задач
+                if prev_task_id is None:
+                    dependency = str(start_num) # для первой задачи 
+                else:
+                    dependency = f"after {prev_task_id}"
+                    
+                    # Зависимость от первой станции для второй
+                    if executor_idx == 1 and self.executor_count == 2:
+                        if i < len(self._executor_schedule[0]):
+                            prev_task_id_executor0 = f"e0_t{i}"
+                            dependency = f"after {prev_task_id_executor0} {prev_task_id}"
+                
+                task_name = item.task_name
+                if task_name == "downtime":
+                    task_name = f"Простой {i+1}"
+                
+                # Формирование строки
+                mermaid_code.append(f"    {task_name:10} :{task_id}, {dependency}, {duration_num}")
+                prev_task_id = task_id
+        # Конец диаграммы
+        mermaid_code.append("```")
+        # Вывод
+        return "\n".join(mermaid_code)
