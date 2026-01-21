@@ -1,12 +1,12 @@
 from unittest import TestLoader, TestSuite, TextTestRunner
 
-from tests.problems.sorting_problem.test_merge_sort import TestSomeSort
+from tests.problems.sorting_problem.test_merge_sort import TestMergeSort
 
 
 def suite():
     """Создает набор тест-кейсов для тестирования."""
     test_suite = TestSuite()
-    test_suite.addTest(TestLoader().loadTestsFromTestCase(TestSomeSort))
+    test_suite.addTest(TestLoader().loadTestsFromTestCase(TestMergeSort))
 
     return test_suite
 
