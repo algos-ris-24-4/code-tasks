@@ -56,9 +56,6 @@ class ConveyorSchedule(AbstractSchedule):
     def __fill_schedule(self, tasks: list[StagedTask]) -> None:
         """Процедура составляет расписание из элементов ScheduleItem для каждого
         исполнителя, согласно алгоритму Джонсона."""
-
-        self._executor_schedule[0] = []
-        self._executor_schedule[1] = []
         
         time_executor1 = 0
         time_executor2 = 0
@@ -99,17 +96,8 @@ class ConveyorSchedule(AbstractSchedule):
             else:
                 group2.append(task)
 
-        length_group1 = len(group1)
-        for i in range(length_group1):
-            for j in range(0, length_group1 - i - 1):
-                if group1[j].stage_durations[0] > group1[j + 1].stage_durations[0]:
-                    group1[j], group1[j + 1] = group1[j + 1], group1[j]
-    
-        length_group2 = len(group2)
-        for i in range(length_group2):
-            for j in range(0, length_group2 - i - 1):
-                if group2[j].stage_durations[1] < group2[j + 1].stage_durations[1]:
-                    group2[j], group2[j + 1] = group2[j + 1], group2[j]
+        group1.sort(key=lambda task: task.stage_durations[0])
+        group2.sort(key=lambda task: task.stage_durations[1], reverse=True)
 
         return group1 + group2
 

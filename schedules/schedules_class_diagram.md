@@ -1,7 +1,9 @@
+```mermaid
 classDiagram
     AbstractSchedule <|-- ConveyorSchedule
     AbstractSchedule "1" --* "0..*" ScheduleItem
     ScheduleItem "1" --> "0..1" StagedTask
+    StagedTask --|> Task
 
     class AbstractSchedule {
         <<abstract>>
@@ -21,6 +23,11 @@ classDiagram
         __fill_schedule(tasks: list[StagedTask]): None
     }
 
+    class Task {
+        name: str
+        duration: float
+    }
+
     class StagedTask {
         name: str
         stage_durations: list[float]
@@ -34,3 +41,4 @@ classDiagram
         duration: float
         end: float
     }
+```

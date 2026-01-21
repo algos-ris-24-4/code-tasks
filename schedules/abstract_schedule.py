@@ -99,20 +99,10 @@ class AbstractSchedule(ABC):
         count_downtime = 0
         schedule = self._executor_schedule[executor_idx]
       
-        first_item = schedule[0]
-        if first_item.start > 0:
-            count_downtime += first_item.start
-        
-        for i in range(len(schedule) - 1):
-            current_item = schedule[i]
-            next_item = schedule[i + 1]
-            
-            if next_item.start > current_item.end:
-                count_downtime += next_item.start - current_item.end
-        
-        last_item = schedule[-1]
-        if last_item.end < self.duration:
-            count_downtime += self.duration - last_item.end
+        for item in schedule:
+            if item.task is None:
+                count_downtime += item.duration
+
         
         return count_downtime
 
