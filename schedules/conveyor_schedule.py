@@ -51,27 +51,20 @@ class ConveyorSchedule(AbstractSchedule):
     @property
     def duration(self) -> float:
         """Возвращает общую продолжительность расписания."""
-        return max(self._executor_schedule[0][-1].end,self._executor_schedule[1][-1].end)
+        return self._executor_schedule[0][-1].end
 
     def __fill_schedule(self, tasks: list[StagedTask]) -> None:
         """Процедура составляет расписание из элементов ScheduleItem для каждого
-        исполнителя, согласно алгоритму Джонсона."""
-        # Очищаем текущее расписание для обоих исполнителей
-        for i in range(self.executor_count):
-            self._executor_schedule[i].clear()
-        
-        # Если нет задач, оставляем пустое расписание
+        исполнителя, согласно алгоритму Джонсона.""" 
         if not tasks:
-            return
+            return  
         
-        # Очищаем текущее расписание
-        self._executor_schedule = [[], []]
-        
+        self._executor_schedule = [[], []]          
         # Временные переменные для отслеживания времени окончания последней задачи
         time_executor1 = 0
         
+        #Заполненеи расписания для первого исполнителя
         for task in tasks:
-            # Для первого исполнителя
             start_executor1 = time_executor1
             duration_executor1 = task.stage_duration(0)
             schedule_item1 = ScheduleItem(task, start_executor1, duration_executor1)
@@ -80,33 +73,24 @@ class ConveyorSchedule(AbstractSchedule):
 
         schedule_item2 = ScheduleItem(None, 0, self._executor_schedule[0][0].end)
         self._executor_schedule[1].append(schedule_item2)
-        i= 1
-
-        duration_executor2 = tasks[0].stage_duration(1)
-        schedule_item2 = ScheduleItem(tasks[0], self._executor_schedule[0][0].end, duration_executor2)
-        self._executor_schedule[1].append(schedule_item2)
-        count_tasks = 1
-        i += 1
-
-
-        for task in tasks[1:]:            
-            duration_executor2 = task.stage_duration(1)
-
-            
-            start_executor2 = self._executor_schedule[1][i - 1].end
-
+        count_schedule_items= 1   
+        count_tasks = 0
+        #Заполнение расписания для второго исполнителя
+        for task in tasks[0:]:            
+            duration_executor2 = task.stage_duration(1)            
+            start_executor2 = self._executor_schedule[1][count_schedule_items - 1].end
             empty_duration = self._executor_schedule[0][count_tasks].end - start_executor2
             if(empty_duration > 0):
                 empty = ScheduleItem(None, start_executor2, empty_duration)
                 self._executor_schedule[1].append(empty)
-                start_executor2 = self._executor_schedule[1][i-1].end
-                i+=1
+                start_executor2 = self._executor_schedule[1][count_schedule_items-1].end
+                count_schedule_items+=1
             else:
                 empty_duration = 0
             schedule_item2 = ScheduleItem(task, start_executor2 + empty_duration, duration_executor2)
             
             self._executor_schedule[1].append(schedule_item2)
-            i+=1
+            count_schedule_items+=1
             count_tasks += 1
         
         if(self._executor_schedule[1][-1].end > self._executor_schedule[0][-1].end):
@@ -134,8 +118,7 @@ class ConveyorSchedule(AbstractSchedule):
         
         # Сортируем group2 по убыванию времени на втором этапе
         group2_sorted = sorted(group2, key=lambda t: t.stage_duration(1), reverse=True)
-        
-        # Объединяем
+    
         return group1_sorted + group2_sorted
 
     def add_task(self, task: StagedTask) -> None:
@@ -146,8 +129,11 @@ class ConveyorSchedule(AbstractSchedule):
         """
         self.__validate_params([task])
         
+        if(not [i.name for i in self._tasks].__contains__(task.name)):
         # Добавляем задачу в список задач
-        self._tasks.append(task)
+            self._tasks.append(task)
+        else:
+            return
         
         # Пересчитываем расписание
         self.__recalculate_schedule()
@@ -183,11 +169,6 @@ class ConveyorSchedule(AbstractSchedule):
         """Пересчитывает расписание с текущим списком задач."""
         sorted_tasks = self.__sort_tasks(self._tasks)
         self.__fill_schedule(sorted_tasks)
-
-    #публичный метод для тестирования
-    @staticmethod
-    def __get_sorted_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
-        return ConveyorSchedule.__sort_tasks(tasks=tasks)
 
     @staticmethod
     def __validate_params(tasks: list[StagedTask]) -> None:
