@@ -12,7 +12,60 @@ class BruteForceTspSolver(AbstractTspSolver):
         - distance - кратчайшее расстояние,
         - path - список с индексами вершин на кратчайшем маршруте.
         """
-        pass
+
+        if self.order == 1:
+            return TspSolution(0, [0])
+
+        destinations = list(range(1, self.order))
+
+        if not destinations:
+            return TspSolution(None, [])
+
+        all_permutations = generate_permutations(destinations)
+        is_symmetric = True
+
+        for row_idx in range(self.order): 
+            for col_idx in range(row_idx + 1, self.order): 
+                if self._dist_matrix[row_idx][col_idx] != self._dist_matrix[col_idx][row_idx]:
+                    is_symmetric = False
+                    break
+            if not is_symmetric:
+                break
+
+        min_path_length = None
+        shortest_path = []
+
+        for current_permutation in all_permutations:
+            if is_symmetric and len(current_permutation) > 0:
+                if current_permutation[0] > current_permutation[-1]:
+                    continue
+
+            route = [0] + list(current_permutation) + [0]
+            is_valid_route = True
+
+            if self._dist_matrix[0][current_permutation[0]] is None:
+                is_valid_route = False
+
+            if is_valid_route:
+                for position in range(len(current_permutation) - 1):
+                    if self._dist_matrix[current_permutation[position]][current_permutation[position+1]] is None:
+                        is_valid_route = False
+                        break
+
+            if is_valid_route:
+                if self._dist_matrix[current_permutation[-1]][0] is None:
+                    is_valid_route = False
+
+            if is_valid_route:
+                path_length = self.get_distance(self._dist_matrix, route)
+                if min_path_length is None or path_length < min_path_length:
+                    min_path_length = path_length
+                    shortest_path = route
+
+        if min_path_length is None:
+            return TspSolution(None, [])
+
+        return TspSolution(min_path_length, shortest_path)
 
 
 if __name__ == "__main__":
