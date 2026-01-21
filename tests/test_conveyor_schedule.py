@@ -189,6 +189,31 @@ class TestConveyorSchedule(unittest.TestCase):
         self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
         self.assertEqual(stage2_schedule, schedule.get_schedule_for_executor(1))
 
+
+    def test_update_tasks_recalculates_correctly(self):
+        """Проверяет, что метод update_tasks корректно меняет расписание."""
+        # Начальные данные
+        task_initial = StagedTask("initial", [10, 10])
+        schedule = ConveyorSchedule([task_initial])
+        old_duration = schedule.duration
+        
+        # Новые данные (более короткая задача)
+        task_new = StagedTask("new", [2, 2])
+        schedule.update_tasks([task_new])
+        
+        # Проверки
+        self.assertEqual(len(schedule.tasks), 1)
+        self.assertEqual(schedule.tasks[0].name, "new")
+        self.assertEqual(schedule.duration, 4.0) # 2 (этап1) + 2 (этап2)
+        self.assertNotEqual(old_duration, schedule.duration)
+
+    def test_update_tasks_validation(self):
+        """Пр
+        оверяет, что update_tasks тоже валидирует входные данные."""
+        schedule = ConveyorSchedule([StagedTask("a", [1, 1])])
+        with self.assertRaises(ScheduleArgumentError):
+            schedule.update_tasks([]) # Пустой список должен вызвать ошибку
+
     def test_pentad(self):
         """Проверяет корректность составления расписания для пяти задач."""
         task_a = StagedTask("a", [4, 3])

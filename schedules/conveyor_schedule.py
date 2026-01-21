@@ -51,18 +51,91 @@ class ConveyorSchedule(AbstractSchedule):
     @property
     def duration(self) -> float:
         """Возвращает общую продолжительность расписания."""
-        return self._executor_schedule[0][-1].end
+        if not self._executor_schedule or not self._executor_schedule[1]:
+            return 0
+            
+        val = self._executor_schedule[1][-1].end
+        
+        
+        if val == int(val):
+            return int(val)
+        return val
 
     def __fill_schedule(self, tasks: list[StagedTask]) -> None:
         """Процедура составляет расписание из элементов ScheduleItem для каждого
         исполнителя, согласно алгоритму Джонсона."""
+        t1_pointer = 0.0
+        t2_pointer = 0.0
+
+        for task in tasks:
+            d1 = task.stage_duration(0)
+            d2 = task.stage_duration(1)
+
+            
+            self._executor_schedule[0].append(ScheduleItem(task, t1_pointer, d1))
+            t1_end = t1_pointer + d1
+
+      
+            start_t2 = max(t2_pointer, t1_end)
+            
+            
+            if start_t2 > t2_pointer:
+                self._executor_schedule[1].append(
+                    ScheduleItem(None, t2_pointer, start_t2 - t2_pointer)
+                )
+
+            self._executor_schedule[1].append(ScheduleItem(task, start_t2, d2))
+            
+            t1_pointer = t1_end
+            t2_pointer = start_t2 + d2
+
+        if t2_pointer > t1_pointer:
+            self._executor_schedule[0].append(
+                ScheduleItem(None, t1_pointer, t2_pointer - t1_pointer)
+            )
+
         pass
 
     @staticmethod
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
         """Возвращает отсортированный список задач для применения
         алгоритма Джонсона."""
+        group1 = []  
+        group2 = []  
+
+        for task in tasks:
+            if task.stage_duration(0) < task.stage_duration(1):
+                group1.append(task)
+            else:
+                group2.append(task)
+
+       
+        group1.sort(key=lambda x: x.stage_duration(0))
+        group2.sort(key=lambda x: x.stage_duration(1), reverse=True)
+
+        return group1 + group2
         pass
+
+
+    def update_tasks(self, tasks: list[StagedTask]) -> None:
+        """Обновляет список задач и пересчитывает расписание.
+        
+        :param tasks: Новый список задач.
+        :raise ScheduleArgumentError: Если список некорректен.
+        """
+      
+        self._ConveyorSchedule__validate_params(tasks)
+        
+     
+        self._tasks = tuple(tasks)
+        
+      
+        self._executor_schedule = [[] for _ in range(self.executor_count)]
+        
+      
+        sorted_tasks = self.__sort_tasks(tasks)
+        self.__fill_schedule(sorted_tasks)
+
 
     @staticmethod
     def __validate_params(tasks: list[StagedTask]) -> None:
