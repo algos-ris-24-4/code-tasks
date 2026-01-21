@@ -1,27 +1,30 @@
-from enum import StrEnum
+from .errors.error_message_template_enum import ErrorMessageTemplateEnum
 
-class SortingErrorMessages(StrEnum):
-    """Перечисление сообщений об ошибках сортировки."""
-
-    INPUT_IS_NONE = "Входной аргумент не может быть None."
-    NOT_A_LIST = "Входной аргумент должен быть списком."
-
-def validate_list(items) -> None:
+def validate_list(items: list) -> None:
     """
     Выполняет валидацию входного списка для сортировки:
     - На вход подаётся не None;
     - На вход подаётся список;
-    - Список не пустой и содержит больше двух элементов;                #Реализовано во внутренней реализации функции сортировки
-    - Все объекты в списке сравнимы друг с другом;                      #Пока не реализовано 
 
     :param items: Объект для проверки.
-    :raises TypeError: Если элементы списка несравнимы.                  #Пока не используется
     :raises ValueError: Если входной объект не является списком.
     """
     if items is None:
-        raise ValueError(SortingErrorMessages.INPUT_IS_NONE)
+        raise ValueError(ErrorMessageTemplateEnum.ERR_INPUT_IS_NONE)
     if not isinstance(items, list):
-        raise ValueError(SortingErrorMessages.NOT_A_LIST)
+        raise ValueError(ErrorMessageTemplateEnum.ERR_NOT_A_LIST)
+
+
+def validate_comparison(elem1, elem2) -> None:
+    try:
+        _ = elem1 < elem2
+    except TypeError:
+        err_msg = ErrorMessageTemplateEnum.ERR_INCOMPARABLE_EMBEDDED_TYPES.format(
+            type(elem2).__name__,
+            type(elem1).__name__
+        )
+        raise TypeError(err_msg)
+
 
 def merge_sort_impl(items: list) -> list:
     """
@@ -37,30 +40,37 @@ def merge_sort_impl(items: list) -> list:
         return items
 
     mid = len(items) // 2
-    left_sorted = merge_sort_impl(items[:mid])
-    right_sorted = merge_sort_impl(items[mid:])
-    return merge(left_sorted, right_sorted)
+    left_lst = merge_sort_impl(items[:mid])
+    right_lst = merge_sort_impl(items[mid:])
+
+    return merge_lists(left_lst, right_lst)
 
 
-def merge(left: list, right: list):
+def merge_lists(left_lst: list, right_lst: list) -> list:
     """
     Сливает два отсортированных списка в один.
     
-    :param left: Отсортированный список.
-    :param right: Отсортированный список.
-    :return: Новый отсортированный список объединёный из left и right.
+    :param left_lst: Левая половина списка.
+    :param right_lst: Правая половина списка.
+    :return: Новый отсортированный список объединёный из left_lst и right_lst.
     """
     result = []
-    i = j = 0
-    while i < len(left) and j < len(right):
-        if left[i] <= right[j]:
-            result.append(left[i])
-            i += 1
+    lt_idx = rt_idx = 0
+
+    while lt_idx < len(left_lst) and rt_idx < len(right_lst):
+        lt_elem, rt_elem = left_lst[lt_idx], right_lst[rt_idx]
+        validate_comparison(lt_elem, rt_elem)
+
+        if lt_elem < rt_elem:
+            result.append(lt_elem)
+            lt_idx += 1
         else:
-            result.append(right[j])
-            j += 1
-    result.extend(left[i:])
-    result.extend(right[j:])
+            result.append(rt_elem)
+            rt_idx += 1
+
+    result.extend(left_lst[lt_idx:])
+    result.extend(right_lst[rt_idx:])
+
     return result
 
 def merge_sort(items) -> list:
@@ -76,8 +86,8 @@ def merge_sort(items) -> list:
     :raises TypeError: Если элементы списка несравнимы.                  #Пока не используется
     """
     validate_list(items)
-
     return merge_sort_impl(items)
+
 
 def main():
     print("Пример сортировки ...")
