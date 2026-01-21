@@ -82,37 +82,33 @@ class ConveyorSchedule(AbstractSchedule):
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
         
         remainingTasks = tasks.copy()
-        sortedTasks = []
+        list1 = []
+        list2 = []
         
         while remainingTasks:
             min_time = 999999999
             min_task = None
-            min_stage = -1
-            min_index = -1
+            min_station = -1
             
-            for i in range(len(remainingTasks)):
-                task = remainingTasks[i]
-                time1 = task.stage_duration(0)
-                time2 = task.stage_duration(1)
-                
-                if time1 < min_time:
-                    min_time = time1
+            for task in remainingTasks:
+                t1 = task.stage_duration(0)
+                t2 = task.stage_duration(1)
+
+                if t1 < min_time:
+                    min_time = t1
                     min_task = task
-                    min_stage = 0
-                    min_index = i
-                
-                if time2 < min_time:
-                    min_time = time2
+                    min_station = 1 
+
+                if t2 < min_time:
+                    min_time = t2
                     min_task = task
-                    min_stage = 1
-                    min_index = i
+                    min_station = 2 
             
-            if min_stage == 0:
-                sortedTasks.insert(0, min_task)
-            else:
-                sortedTasks.append(min_task)
-            remainingTasks.pop(min_index)
-        return sortedTasks
+            if min_station == 1:
+                list1.append(min_task)  
+                list2.insert(0, min_task) 
+            remainingTasks.remove(min_task)
+        return list1 + list2
 
 
     @staticmethod
