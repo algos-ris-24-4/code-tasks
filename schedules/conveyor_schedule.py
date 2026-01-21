@@ -51,68 +51,58 @@ class ConveyorSchedule(AbstractSchedule):
     @property
     def duration(self) -> float:
         """Возвращает общую продолжительность расписания."""
-        if self._executor_schedule[1] and len(self._executor_schedule[1]) > 0:
-            return self._executor_schedule[1][-1].end  # Последняя задача на станции 2
-        elif self._executor_schedule[0] and len(self._executor_schedule[0]) > 0:
-            return self._executor_schedule[0][-1].end  # Если только одна станция
-        return 0.0
+        return self._executor_schedule[0][-1].end
     
-    def __fill_schedule(self, tasks: list[StagedTask]) -> None:
-
-        startTimes = [0, 0]
-        
+    def __fill_schedule(self, tasks: list[StagedTask]) -> None:   
+        self._executor_schedule[0] = []
+        self._executor_schedule[1] = []
+        end_time1 = 0 
+        end_time2 = 0 
         for task in tasks:
-            
             duration1 = task.stage_duration(0)
             
-            item1 = ScheduleItem(task, startTimes[0], duration1)
+            item1 = ScheduleItem(task, end_time1, duration1)
             self._executor_schedule[0].append(item1)
 
-            startTime2 = max(startTimes[0] + duration1, startTimes[1])
+            start_time2 = max(end_time1 + duration1, end_time2)
+
+            if start_time2 > end_time2:
+                downtime_duration = start_time2 - end_time2
+                downtime_item = ScheduleItem(None, end_time2, downtime_duration)
+                self._executor_schedule[1].append(downtime_item)
 
             duration2 = task.stage_duration(1)
 
-            item2 = ScheduleItem(task, startTime2, duration2)
+            item2 = ScheduleItem(task, start_time2, duration2)
             self._executor_schedule[1].append(item2)
 
-            startTimes[0] += duration1
-            startTimes[1] = startTime2 + duration2
+            end_time1 += duration1
+            end_time2 = start_time2 + duration2
+        
+        if end_time1 < end_time2:
+            downtime_duration = end_time2 - end_time1
+            downtime_item = ScheduleItem(None, end_time1, downtime_duration)
+            self._executor_schedule[0].append(downtime_item)
+
 
     @staticmethod
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
-        
-        remainingTasks = tasks.copy()
-        sortedTasks = []
-        
-        while remainingTasks:
-            min_time = 999999999
-            min_task = None
-            min_stage = -1
-            min_index = -1
-            
-            for i in range(len(remainingTasks)):
-                task = remainingTasks[i]
-                time1 = task.stage_duration(0)
-                time2 = task.stage_duration(1)
-                
-                if time1 < min_time:
-                    min_time = time1
-                    min_task = task
-                    min_stage = 0
-                    min_index = i
-                
-                if time2 < min_time:
-                    min_time = time2
-                    min_task = task
-                    min_stage = 1
-                    min_index = i
-            
-            if min_stage == 0:
-                sortedTasks.insert(0, min_task)
+        tasks1 = []
+        tasks2 = []
+        for task in tasks:
+            if task.stage_duration(0) <= task.stage_duration(1):
+                tasks1.append(task)
             else:
-                sortedTasks.append(min_task)
-            remainingTasks.pop(min_index)
-        return sortedTasks
+                tasks2.append(task)
+        for i in range(len(tasks1)):
+            for j in range(0, len(tasks1) - i - 1):
+                if tasks1[j].stage_durations[0] > tasks1[j + 1].stage_durations[0]:
+                    tasks1[j], tasks1[j + 1] = tasks1[j + 1], tasks1[j]
+        for i in range(len(tasks2)):
+            for j in range(0, len(tasks2) - i - 1):
+                if tasks2[j].stage_durations[1] < tasks2[j + 1].stage_durations[1]:
+                    tasks2[j], tasks2[j + 1] = tasks2[j + 1], tasks2[j]
+        return tasks1 + tasks2
 
 
     @staticmethod
