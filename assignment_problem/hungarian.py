@@ -16,9 +16,64 @@ def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
     order = len(matrix)
     matching = BipartiteGraphMatching(order)
     reduced_matrix = get_reduced_matrix(matrix)
-    bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
-       
-    ...
+
+    while not matching.is_perfect:
+        bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
+        X, Y = set(), set()
+        parent = {}
+        free_left = next((i for i in range(order) if not matching.is_left_covered(i)), None)
+        if free_left is None:
+            break
+        wave = deque([(True, free_left)])
+        X.add(free_left)
+        visited_left, visited_right = {free_left}, set()
+        path = None
+
+        while wave:
+            is_left, idx = wave.popleft()
+            if is_left:
+                for j in bipartite_graph.right_neighbors(idx):
+                    if j not in visited_right:
+                        visited_right.add(j)
+                        Y.add(j)
+                        parent[(False, j)] = (True, idx)
+                        if not matching.is_right_covered(j):
+                            path = []
+                            cur = (False, j)
+                            while cur in parent:
+                                prev = parent[cur]
+                                path.append((prev[1], cur[1]) if prev[0] else (cur[1], prev[1]))
+                                cur = prev
+                            path.reverse()
+                            break
+                        left_match = matching.get_left_match(j)
+                        if left_match not in visited_left:
+                            visited_left.add(left_match)
+                            X.add(left_match)
+                            parent[(True, left_match)] = (False, j)
+                            wave.append((True, left_match))
+                if path is not None:
+                    break
+
+        if path:
+            for left, right in path:
+                if matching.is_left_covered(left):
+                    matching.remove_edge(left, matching.get_right_match(left))
+                if matching.is_right_covered(right):
+                    matching.remove_edge(matching.get_left_match(right), right)
+                matching.add_edge(left, right)
+        else:
+            delta = min(
+                reduced_matrix[i][j]
+                for i in X for j in range(order) if j not in Y
+            ) if X else float("inf")
+            if delta > 0 and delta != float("inf"):
+                for i in X:
+                    for j in range(order):
+                        reduced_matrix[i][j] -= delta
+                for j in Y:
+                    for i in range(order):
+                        reduced_matrix[i][j] += delta
 
     return matching
 
