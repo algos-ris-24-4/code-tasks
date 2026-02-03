@@ -40,13 +40,19 @@ def get_perfect_matching(bipartite_graph: BipartiteGraph) -> BipartiteGraphMatch
 
 
 def get_uncovered_left_part(matching: BipartiteGraphMatching, graph: BipartiteGraph) -> list[int]:
-    return [vertex for vertex in range(graph.order) if matching.is_left_covered(vertex)]
+    return [vertex for vertex in range(graph.order) if not matching.is_left_covered(vertex)]
 
 
-def get_alternating_chain(matching: BipartiteGraphMatching, uncovered_left_part: list[int]) -> list[int]:
+def get_alternating_chain(matching: BipartiteGraphMatching, graph: BipartiteGraph, uncovered_left_part: list[int]) -> list[int]:
     chain = []
 
-    ...
+    if len(uncovered_left_part) == 0:
+        return None
+    
+    vrtx = uncovered_left_part[0]
+
+    while not matching.is_right_covered(vrtx):
+        ...
 
     return chain
 
