@@ -24,9 +24,30 @@ def get_perfect_matching(bipartite_graph: BipartiteGraph) -> BipartiteGraphMatch
     
     matching = BipartiteGraphMatching(bipartite_graph.order)
 
-    ...
-    
+    uncovered_left = get_uncovered_left_part(matching, bipartite_graph)
+    while True:
+        chain = get_alternating_chain()
+        if chain:
+            increase_matching()
+        else:
+            break
+
+    if not matching.is_perfect:
+        raise ErrorMessageEnum.NOT_EXISTED_PERFECT_MATCH
+
     return matching
+
+
+def get_uncovered_left_part(matching: BipartiteGraphMatching, graph: BipartiteGraph) -> list[int]:
+    return [vertex for vertex in range(graph.order) if matching.is_left_covered(vertex)]
+
+
+def get_alternating_chain():
+    ...
+
+
+def increase_matching(altng_chain: list[int], matching: BipartiteGraphMatching):
+    ...
 
 
 if __name__ == "__main__":
