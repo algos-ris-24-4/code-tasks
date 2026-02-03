@@ -28,7 +28,8 @@ def get_perfect_matching(bipartite_graph: BipartiteGraph) -> BipartiteGraphMatch
     while True:
         chain = get_alternating_chain()
         if chain:
-            increase_matching()
+            increase_matching(chain, matching)
+            uncovered_left = get_uncovered_left_part(matching, bipartite_graph)
         else:
             break
 
@@ -42,12 +43,24 @@ def get_uncovered_left_part(matching: BipartiteGraphMatching, graph: BipartiteGr
     return [vertex for vertex in range(graph.order) if matching.is_left_covered(vertex)]
 
 
-def get_alternating_chain():
+def get_alternating_chain(matching: BipartiteGraphMatching, uncovered_left_part: list[int]) -> list[int]:
+    chain = []
+
     ...
+
+    return chain
 
 
 def increase_matching(altng_chain: list[int], matching: BipartiteGraphMatching):
-    ...
+    for vertex_idx in range(1, len(altng_chain) - 1, 2):
+        edge_start, edge_end = altng_chain[vertex_idx], altng_chain[vertex_idx + 1]
+        matching.remove_edge(edge_start, edge_end)
+    
+    for vertex_idx in range(len(altng_chain) - 1, 2):
+        edge_start, edge_end = altng_chain[vertex_idx], altng_chain[vertex_idx + 1]
+        matching.add_edge(edge_start, edge_end)
+    
+        
 
 
 if __name__ == "__main__":
