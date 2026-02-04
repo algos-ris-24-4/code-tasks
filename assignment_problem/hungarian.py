@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from collections import deque
 
 from matching.bipartite_graph import BipartiteGraph
@@ -14,11 +18,92 @@ def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
     :rtype: list[list[bool]]
     """
     order = len(matrix)
+    if order == 0:
+        return BipartiteGraphMatching(0)
     matching = BipartiteGraphMatching(order)
     reduced_matrix = get_reduced_matrix(matrix)
-    bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
-       
-    ...
+
+    while not matching.is_perfect:
+        bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
+        found_augmenting_path = False
+
+        for root in range(order):
+            if matching.is_left_covered(root):
+                continue
+
+            # Начало построения чередующегося дерева
+            attended_left = [False] * order
+            attended_right = [False] * order
+            work_parents = [-1] * order
+
+            attended_left[root] = True
+
+            # Создаем 2 очереди: одна для четных фронтов, а вторая для нечетных
+            even_queue = deque([root])
+            odd_queue = deque()
+
+            augment_target: Optional[int] = None
+
+            while (even_queue or odd_queue) and augment_target is None:
+                while even_queue and augment_target is None:
+                    tasks = even_queue.popleft()
+                    for workers in bipartite_graph.right_neighbors(tasks):
+                        if attended_right[workers]:
+                            continue
+                        attended_right[workers] = True
+                        work_parents[workers] = tasks
+                        odd_queue.append(workers)
+                        if not matching.is_right_covered(workers):
+                            augment_target = workers
+                            break
+
+                while odd_queue and augment_target is None:
+                    workers = odd_queue.popleft()
+                    matched_task = matching.get_left_match(workers)
+                    if matched_task != -1 and not attended_left[matched_task]:
+                        attended_left[matched_task] = True
+                        even_queue.append(matched_task)
+
+            if augment_target is not None:
+                workers = augment_target
+                while workers != -1:
+                    tasks = work_parents[workers]
+                    old_workers = matching.get_right_match(tasks)
+                    if old_workers != -1:
+                        matching.remove_edge(tasks, old_workers)
+                    if workers != -1:
+                        matching.add_edge(tasks, workers)
+                    workers = old_workers
+                found_augmenting_path = True
+                break
+
+
+        if found_augmenting_path:
+            continue
+
+        # Начало диагональной редукции
+        tree_tasks: Set[int] = {i for i in range(order) if attended_left[i]}
+        tree_workers: Set[int] = {j for j in range(order) if attended_right[j]}
+
+        if not tree_tasks:
+            raise RuntimeError("Не удалось построить чередующееся дерево")
+
+        min_element = min(
+            reduced_matrix[i][j]
+            for i in tree_tasks
+            for j in range(order)
+            if j not in tree_workers
+        )
+
+        if min_element <= 0:
+            raise RuntimeError(f"Некорректное значение min_element: {min_element}")
+
+        for i in tree_tasks:
+            for j in range(order):
+                reduced_matrix[i][j] -= min_element
+        for j in tree_workers:
+            for i in range(order):
+                reduced_matrix[i][j] += min_element
 
     return matching
 
