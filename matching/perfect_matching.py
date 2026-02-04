@@ -116,7 +116,7 @@ def increase_matching(altng_chain: list[int], matching: BipartiteGraphMatching):
         edge_start, edge_end = altng_chain[vertex_idx], altng_chain[vertex_idx + 1]
         matching.remove_edge(edge_start, edge_end)
     
-    for vertex_idx in range(len(altng_chain) - 1, 2):
+    for vertex_idx in range(0,len(altng_chain) - 1, 2):
         edge_start, edge_end = altng_chain[vertex_idx], altng_chain[vertex_idx + 1]
         matching.add_edge(edge_start, edge_end)
     
