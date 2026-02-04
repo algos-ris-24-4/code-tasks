@@ -70,12 +70,14 @@ def get_alternating_chain(matching: BipartiteGraphMatching, graph: BipartiteGrap
                    continue
                elif matching.get_right_match(left_vrtx) == right_vrtx:
                    continue
+               
                visited_right_vertexes.add(right_vrtx)
                parent_right_vertex[right_vrtx] = left_vrtx
-
+               
                if not matching.is_right_covered(right_vrtx):
                     uncovered_right_vertex = right_vrtx
                     break
+               
                deq.append(('Right',right_vrtx))
 
         else: 
@@ -97,7 +99,7 @@ def get_alternating_chain(matching: BipartiteGraphMatching, graph: BipartiteGrap
     right_vrtx = uncovered_right_vertex
     chain.append(right_vrtx)
 
-    while right_vrtx in parent_right_vertex:
+    while True:
         left_vrtx = parent_right_vertex[right_vrtx]
         chain.append(left_vrtx)
 
@@ -113,12 +115,12 @@ def get_alternating_chain(matching: BipartiteGraphMatching, graph: BipartiteGrap
 
 def increase_matching(altng_chain: list[int], matching: BipartiteGraphMatching):
     for vertex_idx in range(1, len(altng_chain) - 1, 2):
-        edge_start, edge_end = altng_chain[vertex_idx], altng_chain[vertex_idx + 1]
-        matching.remove_edge(edge_start, edge_end)
+        right_vrtx, left_vrtx = altng_chain[vertex_idx], altng_chain[vertex_idx + 1]
+        matching.remove_edge(left_vrtx, right_vrtx)
     
-    for vertex_idx in range(0,len(altng_chain) - 1, 2):
-        edge_start, edge_end = altng_chain[vertex_idx], altng_chain[vertex_idx + 1]
-        matching.add_edge(edge_start, edge_end)
+    for vertex_idx in range(0, len(altng_chain) - 1, 2):
+        left_vrtx, right_vrtx = altng_chain[vertex_idx], altng_chain[vertex_idx + 1]
+        matching.add_edge(left_vrtx, right_vrtx)
     
         
 
