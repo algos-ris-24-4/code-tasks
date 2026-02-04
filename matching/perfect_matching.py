@@ -34,7 +34,7 @@ def get_perfect_matching(bipartite_graph: BipartiteGraph) -> BipartiteGraphMatch
             break
 
     if not matching.is_perfect:
-        raise ErrorMessageEnum.NOT_EXISTED_PERFECT_MATCH
+        raise PerfectMatchingError(ErrorMessageEnum.NOT_EXISTED_PERFECT_MATCH)
 
     return matching
 
