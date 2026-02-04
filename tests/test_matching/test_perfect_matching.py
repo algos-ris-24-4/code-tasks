@@ -39,7 +39,7 @@ class TestGetPerfectMatching(unittest.TestCase):
         self.assertEqual(set(matching.get_matching()), expected)
 
     def test_graph_without_perfect_matching_raises_value_error(self):
-        """Проверяет, что при отсутствии совершенного паросочетания выбрасывается ValueError."""
+        """Проверяет, что при отсутствии совершенного паросочетания выбрасывается PerfectMatchingError."""
         graph = BipartiteGraph({
             0: [0],
             1: [0],
