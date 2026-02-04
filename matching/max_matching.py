@@ -22,7 +22,48 @@ def get_max_matching(bipartite_graph: BipartiteGraph) -> BipartiteGraphMatching:
     
     matching = BipartiteGraphMatching(bipartite_graph.order)
 
-    ...
+    while True:
+        parent = [-1] * bipartite_graph.order
+        queue = deque()
+        
+        for left in range(bipartite_graph.order):
+            if not matching.is_left_covered(left):
+                queue.append(left)
+
+        if not queue:
+            break
+        
+        last_right = -1
+        while queue and last_right == -1:
+            leftNode = queue.popleft()
+            
+            for rightNode in bipartite_graph.right_neighbors(leftNode):
+                if matching.get_right_match(leftNode) == rightNode:
+                    continue
+                
+                if parent[rightNode] == -1:
+                    parent[rightNode] = leftNode
+                    
+                if not matching.is_right_covered(rightNode):
+                    last_right = rightNode
+                    break
+                else:
+                    nextNode = matching.get_left_match(rightNode)
+                    queue.append(nextNode)
+        
+        if last_right == -1:
+            break
+        
+        rightNode = last_right
+        while rightNode != -1:
+            leftNode = parent[rightNode]
+            oldRight = matching.get_right_match(leftNode)
+            
+            if oldRight != -1:
+                matching.remove_edge(leftNode, oldRight)
+            matching.add_edge(leftNode, rightNode)
+            
+            rightNode = oldRight
     
     return matching
 
