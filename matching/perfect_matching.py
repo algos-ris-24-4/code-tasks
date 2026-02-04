@@ -2,8 +2,13 @@ from matching.errors.error_message_enum import ErrorMessageEnum
 from matching.bipartite_graph import BipartiteGraph
 from matching.bipartite_graph_matching import BipartiteGraphMatching
 from collections import deque
-
+from enum import StrEnum
 from matching.errors.perfect_matching_error import PerfectMatchingError
+
+class GraphPartEnum(StrEnum):
+    """Перечисление долей графа"""
+    LEFT_PART = "Left"
+    RIGHT_PART = "Right"
 
 
 def get_perfect_matching(bipartite_graph: BipartiteGraph) -> BipartiteGraphMatching:
@@ -44,7 +49,6 @@ def get_uncovered_left_part(matching: BipartiteGraphMatching, graph: BipartiteGr
 
 
 def get_alternating_chain(matching: BipartiteGraphMatching, graph: BipartiteGraph, uncovered_left_part: list[int]) -> list[int]:
-    chain = []
     if len(uncovered_left_part) == 0:
         return None
 
@@ -58,12 +62,12 @@ def get_alternating_chain(matching: BipartiteGraphMatching, graph: BipartiteGrap
 
     deq = deque()
     for vrtx in uncovered_left_part:
-        deq.append(('Left',vrtx))
+        deq.append((GraphPartEnum.LEFT_PART, vrtx))
         visited_left_vertexes.add(vrtx)
     
     while deq and uncovered_right_vertex == None:
         side, vrtx = deq.popleft()
-        if side == "Left":
+        if side == GraphPartEnum.LEFT_PART:
            left_vrtx = vrtx
            for right_vrtx in graph.right_neighbors(left_vrtx):
                if right_vrtx in visited_right_vertexes:
@@ -78,7 +82,7 @@ def get_alternating_chain(matching: BipartiteGraphMatching, graph: BipartiteGrap
                     uncovered_right_vertex = right_vrtx
                     break
                
-               deq.append(('Right',right_vrtx))
+               deq.append((GraphPartEnum.RIGHT_PART,right_vrtx))
 
         else: 
             right_vrtx = vrtx
@@ -91,12 +95,18 @@ def get_alternating_chain(matching: BipartiteGraphMatching, graph: BipartiteGrap
                 visited_left_vertexes.add(covered_left_vrtx)
                 parent_left_vertex[covered_left_vrtx] = right_vrtx
                 
-                deq.append(('Left',covered_left_vrtx))
+                deq.append((GraphPartEnum.LEFT_PART, covered_left_vrtx))
     
     if uncovered_right_vertex is None:
         return None 
     
-    right_vrtx = uncovered_right_vertex
+    return recover_chain(parent_left_vertex, parent_right_vertex, uncovered_right_vertex)
+
+
+def recover_chain(parent_left_vertex: dict, parent_right_vertex: dict, last_right_vrtx: int) -> list[int]:
+    chain = []
+    right_vrtx = last_right_vrtx
+
     chain.append(right_vrtx)
 
     while True:
@@ -113,7 +123,7 @@ def get_alternating_chain(matching: BipartiteGraphMatching, graph: BipartiteGrap
     return chain
 
 
-def increase_matching(altng_chain: list[int], matching: BipartiteGraphMatching):
+def increase_matching(altng_chain: list[int], matching: BipartiteGraphMatching) -> None:
     for vertex_idx in range(1, len(altng_chain) - 1, 2):
         right_vrtx, left_vrtx = altng_chain[vertex_idx], altng_chain[vertex_idx + 1]
         matching.remove_edge(left_vrtx, right_vrtx)
