@@ -26,7 +26,7 @@ def get_perfect_matching(bipartite_graph: BipartiteGraph) -> BipartiteGraphMatch
 
     uncovered_left = get_uncovered_left_part(matching, bipartite_graph)
     while True:
-        chain = get_alternating_chain()
+        chain = get_alternating_chain(matching,bipartite_graph,uncovered_left)
         if chain:
             increase_matching(chain, matching)
             uncovered_left = get_uncovered_left_part(matching, bipartite_graph)
@@ -45,14 +45,68 @@ def get_uncovered_left_part(matching: BipartiteGraphMatching, graph: BipartiteGr
 
 def get_alternating_chain(matching: BipartiteGraphMatching, graph: BipartiteGraph, uncovered_left_part: list[int]) -> list[int]:
     chain = []
-
     if len(uncovered_left_part) == 0:
         return None
-    
-    vrtx = uncovered_left_part[0]
 
-    while not matching.is_right_covered(vrtx):
-        ...
+    visited_left_vertexes = set()
+    visited_right_vertexes = set()
+
+    parent_left_vertex = {}
+    parent_right_vertex = {}
+
+    uncovered_right_vertex = None
+
+    deq = deque()
+    for vrtx in uncovered_left_part:
+        deq.append(('Left',vrtx))
+        visited_left_vertexes.add(vrtx)
+    
+    while deq and uncovered_right_vertex == None:
+        side, vrtx = deq.popleft()
+        if side == "Left":
+           left_vrtx = vrtx
+           for right_vrtx in graph.right_neighbors(left_vrtx):
+               if right_vrtx in visited_right_vertexes:
+                   continue
+               elif matching.get_right_match(left_vrtx) == right_vrtx:
+                   continue
+               visited_right_vertexes.add(right_vrtx)
+               parent_right_vertex[right_vrtx] = left_vrtx
+
+               if not matching.is_right_covered(right_vrtx):
+                    uncovered_right_vertex = right_vrtx
+                    break
+               deq.append(('Right',right_vrtx))
+
+        else: 
+            right_vrtx = vrtx
+            covered_left_vrtx = matching.get_left_match(right_vrtx)
+
+            if covered_left_vrtx == -1:
+                continue
+
+            if covered_left_vrtx not in visited_left_vertexes:
+                visited_left_vertexes.add(covered_left_vrtx)
+                parent_left_vertex[covered_left_vrtx] = right_vrtx
+                
+                deq.append(('Left',covered_left_vrtx))
+    
+    if uncovered_right_vertex is None:
+        return None 
+    
+    right_vrtx = uncovered_right_vertex
+    chain.append(right_vrtx)
+
+    while right_vrtx in parent_right_vertex:
+        left_vrtx = parent_right_vertex[right_vrtx]
+        chain.append(left_vrtx)
+
+        if left_vrtx not in parent_left_vertex:
+            break
+        else:
+            right_vrtx = parent_left_vertex[left_vrtx]
+            chain.append(right_vrtx)
+    chain.reverse()
 
     return chain
 
