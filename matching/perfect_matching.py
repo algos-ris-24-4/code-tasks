@@ -31,7 +31,7 @@ def get_perfect_matching(bipartite_graph: BipartiteGraph) -> BipartiteGraphMatch
 
     uncovered_left = get_uncovered_left_part(matching, bipartite_graph)
     while not matching.is_perfect:
-        chain = get_alternating_chain(matching,bipartite_graph,uncovered_left)
+        chain = get_alternating_chain(matching, bipartite_graph, uncovered_left)
         if chain:
             increase_matching(chain, matching)
             uncovered_left = get_uncovered_left_part(matching, bipartite_graph)
