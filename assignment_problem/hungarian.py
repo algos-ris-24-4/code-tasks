@@ -17,11 +17,9 @@ def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
     matching = BipartiteGraphMatching(order)
     reduced_matrix = get_reduced_matrix(matrix)
     bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
-       
-    current_matrix = [row[:] for row in reduced_matrix]
 
     while not matching.is_perfect:
-        graph = _get_bipartite_graph_by_zeros(current_matrix)
+        graph = _get_bipartite_graph_by_zeros(reduced_matrix)
 
         start_vertex = -1
         for i in range(order):
@@ -45,7 +43,7 @@ def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
         if not has_unmarked_left or not has_unmarked_right:
             raise ValueError("Невозможно выполнить диагональную редукцию")
 
-        _diagonal_reduction(current_matrix, marked_left, marked_right, order)
+        _diagonal_reduction(reduced_matrix, marked_left, marked_right, order)
 
     return matching
 
@@ -174,10 +172,11 @@ def _diagonal_reduction(matrix: list[list[int | float]],
                 matrix[i][j] += min_value
 
     for i in range(order):
-        for j in range(order):
-            if matrix[i][j] < 0:
-                matrix[i][j] = 0
-
+            has_zero = any(matrix[i][j] == 0 for j in range(order))
+            if not has_zero:
+                matrix = get_reduced_matrix(matrix)
+                
+    return matrix
 
 def _get_bipartite_graph_by_zeros(reduced_matrix: list[list[int | float]]) -> BipartiteGraph:
     adjacency_lists = {}
