@@ -32,7 +32,7 @@ class MaxFlowCalculator:
                 if capacity_matrix[row_idx][col_idx]:
                     self._residual_matrix[col_idx][row_idx] = self._capacity_matrix[row_idx][col_idx]
 
-        self._max_flow = None
+        self._max_flow: int = None
         self._flow_matrix = None
         # Процедура _calculate_max_flow должна в ходе выполнения заполнить атрибуты _flow_matrix и _max_flow
         self._calculate_max_flow()
@@ -90,20 +90,61 @@ class MaxFlowCalculator:
 
     def _calculate_max_flow(self) -> None:
         """Вычисляет максимальный поток в сети с использованием алгоритма Форда-Фалкерсона"""
-        ...
+        while True:
+            augmenting_path = self._find_augmenting_path()
+            if len(augmenting_path) == 0:
+                # считаем максимум
+                return
+            self._increase_flow(augmenting_path)
+            self._set_flow_matrix_by_residual_matrix()
+
 
     def _set_flow_matrix_by_residual_matrix(self):
         """Обновляет матрицу локальных потоков на основе остаточной сети"""
         ...
 
-    def _find_augmenting_path(self):
+    def _find_augmenting_path(self) -> list[int]:
         """Возвращает найденный увеличивающий путь в сети"""
-        ...
+        src = self._sink_idx
+        trg = self._source_idx
+        deq = deque()
+        visited = set()
+        parents = [-1] * self._order
+
+        deq.append(src)
+        visited.add(src)
+
+        while deq:
+            vertex = deq.popleft()
+            for adj_idx, edge_capacity in enumerate(self._residual_matrix[vertex]):
+                if edge_capacity > 0 and adj_idx not in visited:
+                    visited.add(adj_idx)
+                    deq.append(adj_idx)
+                    parents[adj_idx] = vertex
+
+                    if adj_idx == trg:
+                        return MaxFlowCalculator._recover_path(parents, src, trg)
+        return []
+                
+    @staticmethod                
+    def _recover_path(parents: list[int], start: int, end: int) -> list[int]:
+        """Возвращает восстановленный путь между двумя вершинами"""
+        path = []
+        vrtx = end
+        while vrtx != -1:
+            path.append(vrtx)
+            if vrtx == start:
+                break
+            vrtx = parents[vrtx]
+        return path[::-1] if path[-1] == start else []
+
+
 
     def _increase_flow(self, augmenting_path):
         """Корректирует остаточную сеть для увеличения потока в сети с использованием
         найденного увеличивающего пути"""
         ...
+
 
 
 if __name__ == "__main__":
