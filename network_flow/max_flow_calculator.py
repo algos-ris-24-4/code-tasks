@@ -30,9 +30,7 @@ class MaxFlowCalculator:
         for row_idx in range(self._order):
             for col_idx in range(self._order):
                 if capacity_matrix[row_idx][col_idx]:
-                    self._residual_matrix[col_idx][row_idx] = self._capacity_matrix[
-                        row_idx
-                    ][col_idx]
+                    self._residual_matrix[col_idx][row_idx] = self._capacity_matrix[row_idx][col_idx]
 
         self._max_flow = None
         self._flow_matrix = None
@@ -60,13 +58,33 @@ class MaxFlowCalculator:
         :rtype: NetworkVerticesData
         """
         sources = []
-        ...
+        for col_idx in range(len(matrix)):
+            capacity_sum = 0
+            for row_idx in range(len(matrix)):
+                capacity_sum += matrix[row_idx][col_idx]
 
-        sinks = []
-        ...
+            if capacity_sum == 0:
+                sources.append(col_idx)
+
+
+        sinks_set = set()
+        for row_idx in range(len(matrix)):
+            capacity_sum = 0
+            for col_idx in range(len(matrix)):
+                capacity_sum += matrix[row_idx][col_idx]
+
+            if capacity_sum == 0:
+                sinks_set.add(row_idx)
+        sinks = list(sinks_set)
 
         transits = []
-        ...
+        for col_idx in range(len(matrix)):
+            capacity_sum = 0
+            for row_idx in range(len(matrix)):
+                capacity_sum += matrix[row_idx][col_idx]
+
+            if capacity_sum != 0 and col_idx not in sinks_set:
+                transits.append(col_idx)
 
         return NetworkVerticesData(sources, sinks, transits)
 
