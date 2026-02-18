@@ -66,7 +66,6 @@ class MaxFlowCalculator:
             if capacity_sum == 0:
                 sources.append(col_idx)
 
-
         sinks_set = set()
         for row_idx in range(len(matrix)):
             capacity_sum = 0
@@ -88,18 +87,18 @@ class MaxFlowCalculator:
 
         return NetworkVerticesData(sources, sinks, transits)
 
+
     def _calculate_max_flow(self) -> None: 
         """Вычисляет максимальный поток в сети с использованием алгоритма Форда-Фалкерсона"""
         while True:
             augmenting_path = self._find_augmenting_path()
             if len(augmenting_path) == 0:
-                # считаем максимум
                 return
             self._increase_flow(augmenting_path)
             self._set_flow_matrix_by_residual_matrix()
 
 
-    def _set_flow_matrix_by_residual_matrix(self):
+    def _set_flow_matrix_by_residual_matrix(self) -> None:
         """Обновляет матрицу локальных потоков на основе остаточной сети"""
         self._flow_matrix = [[0]* self._order for _ in range(self._order)]
         for from_vrtx in range(self._order):
@@ -136,9 +135,10 @@ class MaxFlowCalculator:
                     if adj_idx == trg:
                         return MaxFlowCalculator._recover_path(parents, src, trg)
         return []
-                
+
+
     @staticmethod            
-    def _recover_path(parents: list[int], start: int, end: int) -> list[int]:
+    def _recover_path(parents: list[int], end: int) -> list[int]:
         """Возвращает восстановленный путь между двумя вершинами"""
         path = []
         vrtx = end
@@ -148,19 +148,18 @@ class MaxFlowCalculator:
         return path
 
 
-
-    def _increase_flow(self, augmenting_path):
+    def _increase_flow(self, augmenting_path: list[int]) -> None:
         """Корректирует остаточную сеть для увеличения потока в сети с использованием
         найденного увеличивающего пути"""
         min_capacity = float("inf")
-        for vrtx in range(len(augmenting_path) -1):
+        for vrtx in range(len(augmenting_path) - 1):
             current_vrtx = augmenting_path[vrtx]
             next_vrtx = augmenting_path[vrtx + 1]
 
             current_capacity = self._residual_matrix[next_vrtx][current_vrtx]
             min_capacity = min(min_capacity,current_capacity)
 
-        for vrtx in range(len(augmenting_path)-1):
+        for vrtx in range(len(augmenting_path) - 1):
             current_vrtx = augmenting_path[vrtx]
             next_vrtx = augmenting_path[vrtx + 1]
 
