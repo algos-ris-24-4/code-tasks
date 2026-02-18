@@ -34,44 +34,74 @@ def get_shortest_path(
     return ShortestPath(distances[source_idx][target_idx], shortest_path)
 
 
-def __floyd_warshall(dist_matrix: list[list[int]]) -> tuple[list[int], list[int]]:
-    """
-    Реализует алгоритм Флойда-Уоршелла для поиска кратчайших расстояний между всеми парами вершин.
+def __floyd_warshall(dist_matrix: list[list[int]]) -> list[list[int]]:
+  
+    n = len(dist_matrix)
 
-    :param dist_matrix: Квадратная матрица расстояний, где `dist_matrix[i][j]` — вес ребра (i, j).
-                        Если вершины не соединены, значение `None`.
-    :type dist_matrix: list[list[int]]
-    :return: Матрица `dist`, где `dist[i][j]` содержит кратчайшее расстояние от вершины `i` к `j`.
-             Если `i == j`, то `dist[i][i] = 0`.
-             Если `j` недостижима из `i`, то `dist[i][j] = inf`.
-    :rtype: list[list[int]]
-    :raises RuntimeError: Если в графе обнаружен цикл отрицательной стоимости.
-    """
-    pass
+    dist: list[list[float]] = []
+    for i in range(n):
+        row: list[float] = []
+        for j in range(n):
+            value = dist_matrix[i][j]
+            if i == j:
+                row.append(0)
+            elif value is None:
+                row.append(INF)
+            else:
+                row.append(value)
+        dist.append(row)
+
+    for k in range(n):
+        for i in range(n):
+            if dist[i][k] == INF:
+                continue
+            for j in range(n):
+                if dist[k][j] == INF:
+                    continue
+                new_dist = dist[i][k] + dist[k][j]
+                if new_dist < dist[i][j]:
+                    dist[i][j] = new_dist
+
+    for i in range(n):
+        if dist[i][i] < 0:
+            raise RuntimeError(ErrorMessageEnum.NEGATIVE_LOOP)
+
+    return dist
 
 
 def __restore_path(
-    dist_matrix: list[list[int]],
-    dist: list[list[int]],
-    source_idx: int,
-    target_idx: int,
-) -> list[int]:
-    """
-    Восстанавливает кратчайший путь от начальной вершины до целевой на основе матрицы расстояний.
+    dist_matrix: list[list[int]], dist: list[list[int]], source_idx: int, target_idx: int) -> list[int]:
+    if dist[source_idx][target_idx] == INF:
+        return []
 
-    :param dist_matrix: Исходная матрица расстояний, содержащая веса рёбер графа.
-    :type dist_matrix: list[list[int]]
-    :param dist: Матрица кратчайших расстояний, полученная с помощью `__floyd_warshall`.
-    :type dist: list[list[int]]
-    :param source_idx: Индекс начальной вершины.
-    :type source_idx: int
-    :param target_idx: Индекс целевой вершины.
-    :type target_idx: int
-    :return: Список индексов вершин, представляющий кратчайший путь от `source_idx` до `target_idx`.
-             Если путь отсутствует, возвращается пустой список.
-    :rtype: list[int]
-    """
-    pass
+    n = len(dist)
+
+    def edge_weight(i: int, j: int) -> float:
+        value = dist_matrix[i][j]
+        if value is None:
+            return INF
+        return value
+
+    def build_path(i: int, j: int) -> list[int]:
+        if i == j:
+            return [i]
+
+        if edge_weight(i, j) == dist[i][j]:
+            return [i, j]
+
+        for k in range(n):
+            if k == i or k == j:
+                continue
+            if dist[i][k] == INF or dist[k][j] == INF:
+                continue
+            if dist[i][k] + dist[k][j] == dist[i][j]:
+                left = build_path(i, k)
+                right = build_path(k, j)
+                return left[:-1] + right
+
+        raise ValueError("Не удалось восстановить путь")
+
+    return build_path(source_idx, target_idx)
 
 
 def __validate_params(dist_matrix: list[list[int]], source_idx: int, target_idx: int):
