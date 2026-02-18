@@ -133,7 +133,7 @@ class MaxFlowCalculator:
                     parents[adj_idx] = vertex
 
                     if adj_idx == trg:
-                        return MaxFlowCalculator._recover_path(parents, src, trg)
+                        return MaxFlowCalculator._recover_path(parents, trg)
         return []
 
 
