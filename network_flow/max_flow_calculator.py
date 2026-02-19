@@ -26,6 +26,10 @@ class MaxFlowCalculator:
         self._source_idx = vertices.sources[0]
         self._sink_idx = vertices.sinks[0]
         
+
+        self._residual_matrix = [[0] * self._order for _ in range(self._order)]
+
+        
         for row_idx in range(self._order):
             for col_idx in range(self._order):
                 if capacity_matrix[row_idx][col_idx]:
