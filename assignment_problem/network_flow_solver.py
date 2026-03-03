@@ -5,6 +5,7 @@ from network_flow.min_cost_flow_calculator import MinCostFlowCalculator
 
 
 AssignmentSolution = namedtuple("AssignmentSolution", ["cost", "assignments"])
+NetworkMatrices = namedtuple("NetworkMatrices", ["capacity_matrix", "cost_matrix"])
 
 def get_assignments(cost_matrix: list[list[int | float]]) -> AssignmentSolution:
     """
@@ -31,6 +32,35 @@ def get_assignments(cost_matrix: list[list[int | float]]) -> AssignmentSolution:
     return AssignmentSolution(total_cost, assignments)
 
 
+def get_network_matrices(assignment_matrix: list[list[int | float]]) -> NetworkMatrices:
+    order_asnm_matr = len(assignment_matrix)
+    order_result = order_asnm_matr * 2 + 2 # + источник и сток
+
+    capacity_matr: list[list[int]] = [[0] * order_result for _ in range(order_result)]
+    cost_matr: list[list[int]] = [[0] * order_result for _ in range(order_result)]
+
+    # заполнение дуг источник -> вершины левой доли
+    src_idx = 0
+    for col_idx in range(src_idx + 1, order_asnm_matr):
+        capacity_matr[src_idx][col_idx] = 1
+
+    # заполнение дуг вершины правой доли -> сток
+    trg_idx = order_result - 1
+    for row_idx in range(order_asnm_matr + 1, trg_idx):
+        capacity_matr[row_idx][trg_idx] = 1
+
+    # заполнение дуг полного двудольного графа
+    for row_idx in range(order_asnm_matr):
+        edge_src = row_idx + 1
+        for col_idx in range(order_asnm_matr):
+            edge_trg = edge_src + order_asnm_matr + col_idx
+            capacity_matr[edge_src][edge_trg] = 1
+            cost_matr[edge_src][edge_trg] = assignment_matrix[row_idx][col_idx]
+
+    return NetworkMatrices(capacity_matr, cost_matr)
+    
+
+
 
 def get_min_cost_perfect_matching(assignment_matrix: list[list[int | float]]) -> BipartiteGraphMatching:
     """
@@ -43,8 +73,9 @@ def get_min_cost_perfect_matching(assignment_matrix: list[list[int | float]]) ->
     :rtype: BipartiteGraphMatching
     """
     # добавить вершины s и t
-    capacity_matrix: list[list[int]] = ...
-    cost_matrix: list[list[int]] = ...
+    net_matrices = get_network_matrices(assignment_matrix)
+    capacity_matrix: list[list[int]] = net_matrices.capacity_matrix
+    cost_matrix: list[list[int]] = net_matrices.cost_matrix
 
     # запустить поиск макс потока мин стоимости
     calculator = MinCostFlowCalculator(capacity_matrix, cost_matrix)
