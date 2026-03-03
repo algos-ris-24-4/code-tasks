@@ -42,12 +42,16 @@ def get_min_cost_perfect_matching(assignment_matrix: list[list[int | float]]) ->
     :return: Совершенное паросочетание с минимальной стоимостью.
     :rtype: BipartiteGraphMatching
     """
+    # добавить вершины s и t
     capacity_matrix: list[list[int]] = ...
     cost_matrix: list[list[int]] = ...
 
+    # запустить поиск макс потока мин стоимости
     calculator = MinCostFlowCalculator(capacity_matrix, cost_matrix)
     flow_matrix = calculator.flow_matrix
     matching = BipartiteGraphMatching(len(assignment_matrix))   
+
+    # добавить в пустое паросочетание ребра из полученной flow_matrix
     ...
 
     return matching
