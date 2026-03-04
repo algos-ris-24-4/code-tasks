@@ -30,7 +30,7 @@ class NetworkValidator:
             if len(row) != row_cnt:
                 raise ValueError(f"{matrix_name}: {ErrorMessageEnum.MATRIX_ERR_MSG}")
             for value in row:
-                if not isinstance(value, int) or value < 0:
+                if not isinstance(value, (int, float)) or value < 0:
                     raise ValueError(
                         f"{matrix_name}: {ErrorMessageEnum.MATRIX_ERR_MSG}"
                     )

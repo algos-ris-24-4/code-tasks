@@ -34,7 +34,8 @@ def get_assignments(cost_matrix: list[list[int | float]]) -> AssignmentSolution:
 
 def get_network_matrices(assignment_matrix: list[list[int | float]]) -> NetworkMatrices:
     """
-    Преобразует матрицу назначений в сеть для алгоритма потока мин. стоимости
+    Преобразует матрицу назначений в матрицы пропускных способносткй и стоимостей с добавлением источника и стока 
+    для построения сети для алгоритма поиска макс. потока мин. стоимости
     """
     order_asnm_matr = len(assignment_matrix)
     order_result = (order_asnm_matr * 2) + 2 # + источник и сток
@@ -75,21 +76,23 @@ def get_min_cost_perfect_matching(assignment_matrix: list[list[int | float]]) ->
     :return: Совершенное паросочетание с минимальной стоимостью.
     :rtype: BipartiteGraphMatching
     """
-    # добавить вершины s и t
+
+    # добавление источника и стока
     net_matrices = get_network_matrices(assignment_matrix)
     capacity_matrix: list[list[int]] = net_matrices.capacity_matrix
     cost_matrix: list[list[int]] = net_matrices.cost_matrix
 
-    # запустить поиск макс потока мин стоимости
     calculator = MinCostFlowCalculator(capacity_matrix, cost_matrix)
     flow_matrix = calculator.flow_matrix
     matching = BipartiteGraphMatching(len(assignment_matrix))   
-    ex_start_pos = 1
+
+    exec_start_pos = 1
     task_start_pos = len(assignment_matrix) + 1
 
     # добавление в пустое паросочетание ребра из полученной flow_matrix
     for number_executor in range(len(assignment_matrix)):
-        executor_idx = ex_start_pos + number_executor
+        executor_idx = exec_start_pos + number_executor
+
         for number_task in range(len(assignment_matrix)):
             task_idx = task_start_pos + number_task
 

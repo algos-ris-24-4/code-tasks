@@ -46,103 +46,71 @@ class MinCostFlowCalculator(MaxFlowCalculator):
         посредством поиска и удаления отрицательных циклов в остаточной сети.
         После удаления всех циклов обновляет матрицу локальных потоков
         на основе остаточной сети."""
-        while True:
-            loop = None
-            for start_idx in range(self._order):
-                loop = self._find_negative_loop(start_idx)
-                if loop and len(loop) > 1:
-                    break
-            
-            if not loop or len(loop) <= 1:
+        max_iterations = self._order * self._order
+        iteration = 0
+        while iteration < max_iterations:
+            iteration += 1
+            try:
+                floyd_warshall(self._cost_residual_matrix)
                 break
-            
-            self._remove_negative_loop(loop)
+            except NegativeLoopFloydWarshallError as e:
+                vertex_in_loop = e.detected_vertex_idx
+                loop = self._find_negative_loop(vertex_in_loop)
+                if loop and len(loop) > 1:
+                    self._remove_negative_loop(loop)
+                    self._residual_matrix, self._cost_residual_matrix = (
+                        self._get_residual_matrices()
+                    )
+                else:
+                    break
 
     def _find_negative_loop(self, start_vertex_idx) -> list[int]:
         """Возвращает найденный цикл отрицательной стоимости в остаточной сети
         стоимости транспортировки"""
-        order = self._order
-        distances = [inf] * order
-        distances[start_vertex_idx] = 0
-        predecessors = [None] * order
-        
-        edges = []
-        for i in range(order):
-            for j in range(order):
-                if self._cost_residual_matrix[i][j]:
-                    edges.append((i, j))
-        
-        last_updated = None
-        for iteration in range(order):
-            last_updated = None
-            for src, trg in edges:
-                if distances[src] != inf:
-                    new_dist = distances[src] + self._cost_residual_matrix[src][trg]
-                    if new_dist < distances[trg]:
-                        distances[trg] = new_dist
-                        predecessors[trg] = src
-                        last_updated = trg
-            
-            if iteration == order - 1 and last_updated is not None:
-                return self._restore_loop(predecessors, last_updated)
-        
-        return []
+        """Возвращает найденный цикл отрицательной стоимости в остаточной сети
+        стоимости транспортировки"""
+        try:
+            _, predecessors = bellman_ford(self._cost_residual_matrix, start_vertex_idx)
+        except NegativeLoopBellmanFordError as e:
+            predecessors = e.predecessors
 
-    def _restore_loop(self, predecessors: list[int], vertex_idx: int) -> list[int]:
-        """Восстанавливает цикл из информации о предшественниках"""
+        current = start_vertex_idx
         visited = {}
-        current = vertex_idx
-        position = 0
-        
-        while current is not None:
+        path = []
+
+        for _ in range(self._order + 1):
             if current in visited:
-                cycle_start_pos = visited[current]
-                cycle = []
-                temp = current
-                temp_path = []
-                while True:
-                    temp_path.append(temp)
-                    temp = predecessors[temp]
-                    if temp == current:
-                        break
-                temp_path.append(current)
-                return temp_path[::-1]
-            
-            visited[current] = position
-            position += 1
+                cycle_start = visited[current]
+
+                return [current] + path[cycle_start + 1:][::-1] + [current]
+            visited[current] = len(path)
+            path.append(current)
+            if predecessors[current] is None:
+                break
             current = predecessors[current]
-        
+
         return []
     
     def _remove_negative_loop(self, loop) -> None:
         """Удаляет цикл отрицательной стоимости в остаточных сетях потоков и стоимостей."""
         
-        if not loop or len(loop) < 2:
+        if len(loop) < 2:
             return
-        
-        min_capacity = inf
+
+        min_capacity = float('inf')
         for i in range(len(loop) - 1):
-            from_idx = loop[i]
-            to_idx = loop[i + 1]
-            capacity = self._residual_matrix[from_idx][to_idx]
-            if capacity > 0:
-                min_capacity = min(min_capacity, capacity)
-        
-        if min_capacity <= 0 or min_capacity == inf:
+            src, trg = loop[i], loop[i + 1]
+            min_capacity = min(min_capacity, self._residual_matrix[src][trg])
+
+        if min_capacity <= 0 or min_capacity == float('inf'):
             return
-        
+
         for i in range(len(loop) - 1):
-            from_idx = loop[i]
-            to_idx = loop[i + 1]
-            
-            cost = self._cost_residual_matrix[from_idx][to_idx]
-            
-            if cost < 0:
-                self._flow_matrix[from_idx][to_idx] -= min_capacity
+            src, trg = loop[i], loop[i + 1]
+            if self._cost_residual_matrix[src][trg] < 0:
+                self._flow_matrix[src][trg] -= min_capacity
             else:
-                self._flow_matrix[to_idx][from_idx] += min_capacity
-        
-        self._residual_matrix, self._cost_residual_matrix = self._get_residual_matrices()
+                self._flow_matrix[trg][src] += min_capacity
 
     def _get_residual_matrices(self):
         """Возвращает остаточные сети, созданные на основе матриц
