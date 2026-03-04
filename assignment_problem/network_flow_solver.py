@@ -84,9 +84,18 @@ def get_min_cost_perfect_matching(assignment_matrix: list[list[int | float]]) ->
     calculator = MinCostFlowCalculator(capacity_matrix, cost_matrix)
     flow_matrix = calculator.flow_matrix
     matching = BipartiteGraphMatching(len(assignment_matrix))   
+    ex_start_pos = 1
+    task_start_pos = len(assignment_matrix) + 1
 
-    # добавить в пустое паросочетание ребра из полученной flow_matrix
-    ...
+    # добавление в пустое паросочетание ребра из полученной flow_matrix
+    for number_executor in range(len(assignment_matrix)):
+        executor_idx = ex_start_pos + number_executor
+        for number_task in range(len(assignment_matrix)):
+            task_idx = task_start_pos + number_task
+
+            if flow_matrix[executor_idx][task_idx] > 0:
+                matching.add_edge(number_executor,number_task)
+                break
 
     return matching
 
