@@ -46,17 +46,103 @@ class MinCostFlowCalculator(MaxFlowCalculator):
         посредством поиска и удаления отрицательных циклов в остаточной сети.
         После удаления всех циклов обновляет матрицу локальных потоков
         на основе остаточной сети."""
-        pass
+        while True:
+            loop = None
+            for start_idx in range(self._order):
+                loop = self._find_negative_loop(start_idx)
+                if loop and len(loop) > 1:
+                    break
+            
+            if not loop or len(loop) <= 1:
+                break
+            
+            self._remove_negative_loop(loop)
 
     def _find_negative_loop(self, start_vertex_idx) -> list[int]:
         """Возвращает найденный цикл отрицательной стоимости в остаточной сети
         стоимости транспортировки"""
-        pass
+        order = self._order
+        distances = [inf] * order
+        distances[start_vertex_idx] = 0
+        predecessors = [None] * order
+        
+        edges = []
+        for i in range(order):
+            for j in range(order):
+                if self._cost_residual_matrix[i][j]:
+                    edges.append((i, j))
+        
+        last_updated = None
+        for iteration in range(order):
+            last_updated = None
+            for src, trg in edges:
+                if distances[src] != inf:
+                    new_dist = distances[src] + self._cost_residual_matrix[src][trg]
+                    if new_dist < distances[trg]:
+                        distances[trg] = new_dist
+                        predecessors[trg] = src
+                        last_updated = trg
+            
+            if iteration == order - 1 and last_updated is not None:
+                return self._restore_loop(predecessors, last_updated)
+        
+        return []
 
+    def _restore_loop(self, predecessors: list[int], vertex_idx: int) -> list[int]:
+        """Восстанавливает цикл из информации о предшественниках"""
+        visited = {}
+        current = vertex_idx
+        position = 0
+        
+        while current is not None:
+            if current in visited:
+                cycle_start_pos = visited[current]
+                cycle = []
+                temp = current
+                temp_path = []
+                while True:
+                    temp_path.append(temp)
+                    temp = predecessors[temp]
+                    if temp == current:
+                        break
+                temp_path.append(current)
+                return temp_path[::-1]
+            
+            visited[current] = position
+            position += 1
+            current = predecessors[current]
+        
+        return []
+    
     def _remove_negative_loop(self, loop) -> None:
         """Удаляет цикл отрицательной стоимости в остаточных сетях потоков и стоимостей."""
         
-        pass
+        if not loop or len(loop) < 2:
+            return
+        
+        min_capacity = inf
+        for i in range(len(loop) - 1):
+            from_idx = loop[i]
+            to_idx = loop[i + 1]
+            capacity = self._residual_matrix[from_idx][to_idx]
+            if capacity > 0:
+                min_capacity = min(min_capacity, capacity)
+        
+        if min_capacity <= 0 or min_capacity == inf:
+            return
+        
+        for i in range(len(loop) - 1):
+            from_idx = loop[i]
+            to_idx = loop[i + 1]
+            
+            cost = self._cost_residual_matrix[from_idx][to_idx]
+            
+            if cost < 0:
+                self._flow_matrix[from_idx][to_idx] -= min_capacity
+            else:
+                self._flow_matrix[to_idx][from_idx] += min_capacity
+        
+        self._residual_matrix, self._cost_residual_matrix = self._get_residual_matrices()
 
     def _get_residual_matrices(self):
         """Возвращает остаточные сети, созданные на основе матриц
@@ -86,7 +172,13 @@ class MinCostFlowCalculator(MaxFlowCalculator):
     def _get_cost_by_flow(self) -> int:
         """Возвращает суммарную стоимость транспортировки на основе матрицы локальных потоков
         и матрицы стоимостей"""
-        pass
+        total_cost = 0
+        for row_idx in range(self._order):
+            for col_idx in range(self._order):
+                if self._flow_matrix[row_idx][col_idx]:
+                    total_cost += self._flow_matrix[row_idx][col_idx] * self._cost_matrix[row_idx][col_idx]
+        
+        return total_cost
 
 
 if __name__ == "__main__":
