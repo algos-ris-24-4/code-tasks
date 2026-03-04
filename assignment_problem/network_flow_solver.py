@@ -33,15 +33,18 @@ def get_assignments(cost_matrix: list[list[int | float]]) -> AssignmentSolution:
 
 
 def get_network_matrices(assignment_matrix: list[list[int | float]]) -> NetworkMatrices:
+    """
+    Преобразует матрицу назначений в сеть для алгоритма потока мин. стоимости
+    """
     order_asnm_matr = len(assignment_matrix)
-    order_result = order_asnm_matr * 2 + 2 # + источник и сток
+    order_result = (order_asnm_matr * 2) + 2 # + источник и сток
 
     capacity_matr: list[list[int]] = [[0] * order_result for _ in range(order_result)]
     cost_matr: list[list[int]] = [[0] * order_result for _ in range(order_result)]
 
     # заполнение дуг источник -> вершины левой доли
     src_idx = 0
-    for col_idx in range(src_idx + 1, order_asnm_matr):
+    for col_idx in range(src_idx + 1, order_asnm_matr + 1): 
         capacity_matr[src_idx][col_idx] = 1
 
     # заполнение дуг вершины правой доли -> сток
@@ -53,7 +56,7 @@ def get_network_matrices(assignment_matrix: list[list[int | float]]) -> NetworkM
     for row_idx in range(order_asnm_matr):
         edge_src = row_idx + 1
         for col_idx in range(order_asnm_matr):
-            edge_trg = edge_src + order_asnm_matr + col_idx
+            edge_trg = 1 + order_asnm_matr + col_idx
             capacity_matr[edge_src][edge_trg] = 1
             cost_matr[edge_src][edge_trg] = assignment_matrix[row_idx][col_idx]
 
