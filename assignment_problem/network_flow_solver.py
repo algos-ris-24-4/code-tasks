@@ -35,20 +35,47 @@ def get_assignments(cost_matrix: list[list[int | float]]) -> AssignmentSolution:
 def get_min_cost_perfect_matching(assignment_matrix: list[list[int | float]]) -> BipartiteGraphMatching:
     """
     Возвращает совершенное паросочетание с минимальной стоимостью, найденное с использованием алгоритма поиска 
-    максимального потока минимальной стоимости.
+    максимального потока минимальной стоимосdти.
 
     :param assignment_matrix: Квадратная матрица весов, где ``matrix[i][j]`` представляет вес назначения ``i -> j``.
     :type assignment_matrix: list[list[int|float]]
     :return: Совершенное паросочетание с минимальной стоимостью.
     :rtype: BipartiteGraphMatching
     """
-    capacity_matrix: list[list[int]] = ...
-    cost_matrix: list[list[int]] = ...
+    size = len(assignment_matrix)
+    source_idx = 2 * size
+    sink_idx = 2 * size + 1
+    order = 2 * size + 2
+
+    capacity_matrix: list[list[int]] = [[0] * order for i in range(order)]
+    cost_matrix: list[list[int]] = [[0] * order for i in range(order)]
+
+    for worker_idx in range(size):
+        capacity_matrix[source_idx][worker_idx] = 1
+        cost_matrix[source_idx][worker_idx] = 0
+
+    for worker_idx in range(size):
+        for task_idx in range(size):
+            left_vertex = worker_idx
+            right_vertex = size + task_idx
+            capacity_matrix[left_vertex][right_vertex] = 1
+            cost_matrix[left_vertex][right_vertex] = int(assignment_matrix[worker_idx][task_idx])
+
+    for task_idx in range(size):
+        right_vertex = size + task_idx
+        capacity_matrix[right_vertex][sink_idx] = 1
+        cost_matrix[right_vertex][sink_idx] = 0
 
     calculator = MinCostFlowCalculator(capacity_matrix, cost_matrix)
     flow_matrix = calculator.flow_matrix
-    matching = BipartiteGraphMatching(len(assignment_matrix))   
-    ...
+
+    matching = BipartiteGraphMatching(size)
+
+    for worker_idx in range(size):
+        for task_idx in range(size):
+            right_vertex = size + task_idx
+            if flow_matrix[worker_idx][right_vertex] > 0:
+                matching.add_edge(worker_idx, task_idx) 
 
     return matching
 

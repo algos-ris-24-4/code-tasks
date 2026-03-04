@@ -2,12 +2,6 @@ from math import inf
 
 from network_flow.max_flow_calculator import MaxFlowCalculator
 from network_flow.network_validator import NetworkValidator
-from shortest_path.bellman_ford import (
-    NegativeLoopBellmanFordError,
-    bellman_ford,
-    restore_path,
-)
-from shortest_path.floyd_warshall import NegativeLoopFloydWarshallError, floyd_warshall
 
 COST_MATRIX_NAME = "Таблица стоимости транспортировки"
 
@@ -21,72 +15,121 @@ class MinCostFlowCalculator(MaxFlowCalculator):
 
         :param capacity_matrix: Квадратная матрица пропускных способностей графа.
         :type capacity_matrix: list[list[int]]
-        :param cost_matrix: Квадратная матрица стоимости транспортировки.
+        :param cost_matrix: Квадратная матрица стоимости транспортировки (неотрицательные целые).
         :type cost_matrix: list[list[int]]
         """
+        NetworkValidator.validate_matrix(capacity_matrix, "Таблица пропускных способностей")
         NetworkValidator.validate_matrix(cost_matrix, COST_MATRIX_NAME)
-        # Максимальный поток рассчитывается в родительском классе,
-        # сохраняется значением максимального потока и матрица локальных потоков
-        super().__init__(capacity_matrix)
 
+        vertices = MaxFlowCalculator.split_vertices_by_types(capacity_matrix)
+        NetworkValidator.validate_vertices(vertices, "Таблица пропускных способностей")
+
+        self._capacity_matrix = capacity_matrix
         self._cost_matrix = cost_matrix
-        self._residual_matrix, self._cost_residual_matrix = (
-            self._get_residual_matrices()
-        )
-        self._minimize_cost()
-        self._min_cost = self._get_cost_by_flow()
+        self._order = len(capacity_matrix)
+        self._source_idx = vertices.sources[0]
+        self._sink_idx = vertices.sinks[0]
+
+        self._flow_matrix: list[list[int]] = [
+            [0] * self._order for i in range(self._order)
+        ]
+        self._max_flow: int = 0
+        self._min_cost: int = 0
+
+        self._calculate_min_cost_max_flow()
 
     @property
     def min_cost(self) -> int:
         """Возвращает минимальную стоимость потока"""
         return self._min_cost
 
-    def _minimize_cost(self) -> None:
-        """Осуществляет минимизацию стоимости максимального потока
-        посредством поиска и удаления отрицательных циклов в остаточной сети.
-        После удаления всех циклов обновляет матрицу локальных потоков
-        на основе остаточной сети."""
-        pass
+    def _calculate_min_cost_max_flow(self) -> None:
+        """Вычисляет максимальный поток минимальной стоимости с помощью поиска кратчайших увеличивающих путей."""
+        order = self._order
+        src = self._source_idx
+        trg = self._sink_idx
 
-    def _find_negative_loop(self, start_vertex_idx) -> list[int]:
-        """Возвращает найденный цикл отрицательной стоимости в остаточной сети
-        стоимости транспортировки"""
-        pass
+        residual_capacity = [[0] * order for i in range(order)]
+        residual_cost = [[0] * order for i in range(order)]
 
-    def _remove_negative_loop(self, loop) -> None:
-        """Удаляет цикл отрицательной стоимости в остаточных сетях потоков и стоимостей."""
-        
-        pass
+        for i in range(order):
+            for j in range(order):
+                capacity = self._capacity_matrix[i][j]
+                if capacity:
+                    cost = self._cost_matrix[i][j]
+                    residual_capacity[i][j] = capacity
+                    residual_cost[i][j] = cost
+                    residual_cost[j][i] = -cost
+
+        while True:
+            dist = [inf] * order
+            parent = [-1] * order
+            dist[src] = 0
+
+            for i in range(order - 1):
+                updated = False
+                for u in range(order):
+                    if dist[u] == inf:
+                        continue
+                    for v in range(order):
+                        if residual_capacity[u][v] <= 0:
+                            continue
+                        new_dist = dist[u] + residual_cost[u][v]
+                        if new_dist < dist[v]:
+                            dist[v] = new_dist
+                            parent[v] = u
+                            updated = True
+                if not updated:
+                    break
+
+            if dist[trg] == inf:
+                break
+
+            path = []
+            v = trg
+            while v != -1 and v != src:
+                path.append(v)
+                v = parent[v]
+            if v == -1:
+                break
+            path.append(src)
+            path = path[::-1]
+
+            delta = inf
+            for i in range(1, len(path)):
+                u = path[i - 1]
+                v = path[i]
+                delta = min(delta, residual_capacity[u][v])
+
+            if delta == inf or delta == 0:
+                break
+
+            for i in range(1, len(path)):
+                u = path[i - 1]
+                v = path[i]
+                residual_capacity[u][v] -= delta
+                residual_capacity[v][u] += delta
+
+                if self._capacity_matrix[u][v]:
+                    self._flow_matrix[u][v] += delta
+                elif self._capacity_matrix[v][u]:
+                    self._flow_matrix[v][u] -= delta
+
+            self._max_flow += delta
+
+        total_cost = 0
+        for i in range(order):
+            for j in range(order):
+                flow = self._flow_matrix[i][j]
+                if flow:
+                    total_cost += flow * self._cost_matrix[i][j]
+        self._min_cost = total_cost
 
     def _get_residual_matrices(self):
-        """Возвращает остаточные сети, созданные на основе матриц
-        локальных потоков и пропускных способностей:
-        - residual_matrix - остаточная сеть с указанием потоков и резервов.
-        - cost_residual_matrix - остаточная сеть с указанием стоимости транспортировки.
-        """
-        residual_matrix = [[0] * self._order for _ in range(self._order)]
-        cost_residual_matrix = [[0] * self._order for _ in range(self._order)]
-        for row_idx in range(self._order):
-            for col_idx in range(self._order):
-                flow = self._flow_matrix[row_idx][col_idx]
-                reserve = (
-                    self._capacity_matrix[row_idx][col_idx]
-                    - self._flow_matrix[row_idx][col_idx]
-                )
-                cost = self._cost_matrix[row_idx][col_idx]
-                if flow:
-                    residual_matrix[row_idx][col_idx] = flow
-                    cost_residual_matrix[row_idx][col_idx] = -cost
-                if reserve:
-                    residual_matrix[col_idx][row_idx] = reserve
-                    cost_residual_matrix[col_idx][row_idx] = cost
-
-        return residual_matrix, cost_residual_matrix
+        raise NotImplementedError
 
     def _get_cost_by_flow(self) -> int:
-        """Возвращает суммарную стоимость транспортировки на основе матрицы локальных потоков
-        и матрицы стоимостей"""
-        pass
+        return self._min_cost
 
 
 if __name__ == "__main__":
