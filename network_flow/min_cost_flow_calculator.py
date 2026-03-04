@@ -46,17 +46,68 @@ class MinCostFlowCalculator(MaxFlowCalculator):
         посредством поиска и удаления отрицательных циклов в остаточной сети.
         После удаления всех циклов обновляет матрицу локальных потоков
         на основе остаточной сети."""
-        pass
+        max_iterations = self._order * self._order
+        iteration = 0
+        while iteration < max_iterations:
+            iteration += 1
+            try:
+                floyd_warshall(self._cost_residual_matrix)
+                break
+            except NegativeLoopFloydWarshallError as e:
+                vertex_in_loop = e.detected_vertex_idx
+                loop = self._find_negative_loop(vertex_in_loop)
+                if loop and len(loop) > 1:
+                    self._remove_negative_loop(loop)
+                    self._residual_matrix, self._cost_residual_matrix = (
+                        self._get_residual_matrices()
+                    )
+                else:
+                    break
 
     def _find_negative_loop(self, start_vertex_idx) -> list[int]:
         """Возвращает найденный цикл отрицательной стоимости в остаточной сети
         стоимости транспортировки"""
-        pass
+        try:
+            _, predecessors = bellman_ford(self._cost_residual_matrix, start_vertex_idx)
+        except NegativeLoopBellmanFordError as e:
+            predecessors = e.predecessors
+
+        current = start_vertex_idx
+        visited = {}
+        path = []
+
+        for step in range(self._order + 1):
+            if current in visited:
+                cycle_start = visited[current]
+
+                return [current] + path[cycle_start + 1:][::-1] + [current]
+            visited[current] = len(path)
+            path.append(current)
+            if predecessors[current] is None:
+                break
+            current = predecessors[current]
+
+        return []
 
     def _remove_negative_loop(self, loop) -> None:
         """Удаляет цикл отрицательной стоимости в остаточных сетях потоков и стоимостей."""
-        
-        pass
+        if len(loop) < 2:
+            return
+
+        min_capacity = float('inf')
+        for i in range(len(loop) - 1):
+            u, v = loop[i], loop[i + 1]
+            min_capacity = min(min_capacity, self._residual_matrix[u][v])
+
+        if min_capacity <= 0 or min_capacity == float('inf'):
+            return
+
+        for i in range(len(loop) - 1):
+            u, v = loop[i], loop[i + 1]
+            if self._cost_residual_matrix[u][v] < 0:
+                self._flow_matrix[u][v] -= min_capacity
+            else:
+                self._flow_matrix[v][u] += min_capacity
 
     def _get_residual_matrices(self):
         """Возвращает остаточные сети, созданные на основе матриц
@@ -66,27 +117,32 @@ class MinCostFlowCalculator(MaxFlowCalculator):
         """
         residual_matrix = [[0] * self._order for _ in range(self._order)]
         cost_residual_matrix = [[0] * self._order for _ in range(self._order)]
-        for row_idx in range(self._order):
-            for col_idx in range(self._order):
-                flow = self._flow_matrix[row_idx][col_idx]
+
+        for i in range(self._order):
+            for j in range(self._order):
+                flow = self._flow_matrix[i][j]
                 reserve = (
-                    self._capacity_matrix[row_idx][col_idx]
-                    - self._flow_matrix[row_idx][col_idx]
+                    self._capacity_matrix[i][j] - self._flow_matrix[i][j]
                 )
-                cost = self._cost_matrix[row_idx][col_idx]
+                cost = self._cost_matrix[i][j]
                 if flow:
-                    residual_matrix[row_idx][col_idx] = flow
-                    cost_residual_matrix[row_idx][col_idx] = -cost
+                    residual_matrix[i][j] = flow
+                    cost_residual_matrix[i][j] = -cost
                 if reserve:
-                    residual_matrix[col_idx][row_idx] = reserve
-                    cost_residual_matrix[col_idx][row_idx] = cost
+                    residual_matrix[j][i] = reserve
+                    cost_residual_matrix[j][i] = cost
 
         return residual_matrix, cost_residual_matrix
 
     def _get_cost_by_flow(self) -> int:
         """Возвращает суммарную стоимость транспортировки на основе матрицы локальных потоков
         и матрицы стоимостей"""
-        pass
+        total_cost = 0
+        for i in range(self._order):
+            for j in range(self._order):
+                if self._flow_matrix[i][j] > 0:
+                    total_cost += self._flow_matrix[i][j] * self._cost_matrix[i][j]
+        return total_cost
 
 
 if __name__ == "__main__":
