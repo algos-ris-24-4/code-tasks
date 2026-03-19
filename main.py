@@ -8,8 +8,17 @@ if __name__ == "__main__":
     print(f"Веса предметов для комплектования рюкзака: {weights}")
     print(f"Стоимости предметов для комплектования рюкзака: {costs}")
     print(f"Ограничение вместимости рюкзака: {weight_limit}")
+
+        
+    _mask = "{0:0" + str(len(weights)) + "b}" 
+    print(_mask.format(10))
+    print(_mask)
     solver = GeneticSolver(weights, costs, weight_limit)
     result = solver.get_knapsack()
+
+
+
+
     print(
         f"Максимальная стоимость: {result.cost}, " f"индексы предметов: {result.items}"
     )
