@@ -127,13 +127,22 @@ class GeneticSolver(KnapsackAbstractSolver):
     
 
     def __update_population(self, children: list[Individ], ancestors_gen_numbers: set[int]) -> None:
-        # TODO: подумать над дубликатами и ухудшением 
+
         
         sorted_individs = sorted(self.__population.values(), key=lambda idv: idv.fitness)
 
         removing_idv_idx = 0
         for adding_individ in children:
+
+            if adding_individ.genetic_number in self.__population:
+                adding_individ = self.__mutation(adding_individ)
             
+                for _ in range(3):
+                    if adding_individ.genetic_number in self.__population:
+                        adding_individ = self.__mutation(adding_individ)
+                    else:
+                        break
+
             removing_individ = sorted_individs[removing_idv_idx]
             while removing_individ.genetic_number in ancestors_gen_numbers:
                 removing_idv_idx += 1
