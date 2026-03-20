@@ -150,6 +150,11 @@ class GeneticSolver(KnapsackAbstractSolver):
 
         total_fitness_sum = sum(idv.fitness for idv in self.__population.values())
 
+        if total_fitness_sum == 0:
+            numbers = list(self.population.keys())
+            while len(ancestors) < ancestors_count:
+                ancestors.add(rnd.choice(numbers))
+            return ancestors
         
         while len(ancestors) < ancestors_count:
             roulette_choice = rnd.randint(0, total_fitness_sum - 1)
