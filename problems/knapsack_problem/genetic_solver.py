@@ -1,5 +1,7 @@
 import random as rnd
 
+from collections import namedtuple
+
 from problems.knapsack_problem.bb_solver import BranchAndBoundSolver
 from problems.knapsack_problem.brute_force_solver import BruteForceSolver
 from problems.knapsack_problem.knapsack_abs_solver import (
@@ -16,6 +18,8 @@ EPOCH_CNT = 100
 BRUTE_FORCE_BOUND = 5
 """Размер входных данных задачи, до которого используется полный перебор."""
 
+
+Individual = namedtuple("Individual", ["genetic_code", "chromosome", "fitness"]);
 
 class GeneticSolver(KnapsackAbstractSolver):
     """Класс для решения задачи о рюкзаке с использованием генетического
@@ -49,24 +53,72 @@ class GeneticSolver(KnapsackAbstractSolver):
         возвращается строка из 0 и 1, а также значение фитнес-функции.
         """
         population_data = []
-        for key in self.__population.keys():
-            population_data.append((self.__mask.format(key), self.__population[key]))
+        # TODO: ПЕРЕПИСАТЬ
+        # for key in self.__population.keys():
+        #     population_data.append((self.__get_chromosome(key), self.__population[key]))
+
         return population_data
+
 
     def get_knapsack(self, epoch_cnt=EPOCH_CNT) -> KnapsackSolution:
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
+
+        if self.item_cnt <= BRUTE_FORCE_BOUND:
+            return BruteForceSolver.get_knapsack()
+
+        for epoch_num in range(1, EPOCH_CNT + 1):
+
+            if epoch_num != 1:
+                self.__population = self.__generate_generation(...)
+
+            if epoch_num != EPOCH_CNT:
+                # отбор родителей
+                ...
+                # применить скрещивание / мутацию
+                ...
+        
+        # выбрать лучшую хромосому /////// ВОЗМОЖНО СТОИТ ХРАНИТЬ ТЕКУЩЕГО ЛИДЕРА
+        ...
+        
+        # получить индексы предметов для ответа
+        ...
+        # отдать решение
+        return KnapsackSolution(self.get_cost(...), ...)
+
+    def __get_chromosome(self, number: int) -> str:
+        return self.__mask.format(number)
+
+    def __generate_population(self, population_cnt: int) -> dict[int, Individual]:
+        curr_population: dict[int, int] = dict()
+
+        for _ in range(population_cnt):
+            num = rnd.randint(1, len(self.item_cnt))
+
+            while curr_population.get(num) != None:
+                num = rnd.randint(1, len(self.item_cnt))
+
+            chrom = self.__get_chromosome(num)
+            fit = self.__get_fit(chrom)
+
+            curr_population[num] = Individual(num, chrom, fit)
+
+        return curr_population
+    
+    def __generate_generation(self, children, ancestors) -> dict[int, Individual]:
+        
         pass
 
-    def __generate_population(self, population_cnt: int) -> dict[int:int]:
+    def __choose_ancestors_for_crossing() -> list[Individual]:
+        ...
+
+    def __cross_items(self, ancestor1: Individual, ancestor2: Individual) -> list[Individual]:
         pass
 
-    def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
+    def __mutation(self, item_set: Individual) -> Individual:
         pass
 
-    def __mutation(self, item_set: int) -> int:
-        pass
-
-    def __get_fit(self, item):
+    def __get_fit(self, chromosome: str) -> int:
+        
         pass
 
 
