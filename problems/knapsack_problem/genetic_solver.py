@@ -118,7 +118,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         return curr_population
     
 
-    def __update_population(self, children: list[Individ], ancestors_gen_numbers: list[int]) -> None:
+    def __update_population(self, children: list[Individ], ancestors_gen_numbers: set[int]) -> None:
         # TODO: подумать над дубликатами и ухудшением 
         
         sorted_individs = sorted(self.__population.values(), key=lambda idv: idv.fitness)
@@ -139,21 +139,18 @@ class GeneticSolver(KnapsackAbstractSolver):
 
     def __choose_ancestors_for_crossing(self, ancestors_count: int) -> set[int]:
         ancestors = set()
-        roulette = []
 
-        total_fitness_value = sum(idv.fitness for idv in self.__population.values())
-
-        for idv in self.__population.values():
-            part = total_fitness_value // idv.fitness
-            for _ in range(part):
-                roulette.append(idv.genetic_number);
+        total_fitness_sum = sum(idv.fitness for idv in self.__population.values())
         
-        while len(ancestors) != ancestors_count:
-            roulette_choice = rnd.randint(0, len(roulette))
-            idv_num = roulette[roulette_choice]
-
-            if idv_num not in ancestors:
-                ancestors.add(idv_num)
+        while len(ancestors) < ancestors_count:
+            roulette_choice = rnd.randint(0, total_fitness_sum - 1)
+            
+            current_fitness_sum = 0
+            for idv in self.__population.values():
+                current_fitness_sum += idv.fitness
+                if roulette_choice <= current_fitness_sum:
+                    ancestors.add(idv.genetic_number)
+                    break
 
         return ancestors
 
