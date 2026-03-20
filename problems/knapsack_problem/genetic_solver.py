@@ -156,10 +156,21 @@ class GeneticSolver(KnapsackAbstractSolver):
 
 
     def __cross_population(self, ancestors: list[int]) -> list[Individ]:
-        ...
+        children = []
+
+        for idv_idx in range(0, len(ancestors) - 1, 2):
+            anc1 = self.__population[ancestors[idv_idx]]
+            anc2 = self.__population[ancestors[idv_idx + 1]]
+
+            child1, child2 = self.__cross_items(self, anc1, anc2)
+            children.append(child1)
+            children.append(child2)
+
+        return children
 
 
-    def __cross_items(self, ancestor1: Individ, ancestor2: Individ) -> list[Individ]:
+
+    def __cross_items(self, ancestor1: Individ, ancestor2: Individ) -> tuple[Individ, Individ]:
         pass
 
 
