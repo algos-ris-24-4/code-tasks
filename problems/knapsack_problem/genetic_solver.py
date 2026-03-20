@@ -54,10 +54,8 @@ class GeneticSolver(KnapsackAbstractSolver):
         возвращается строка из 0 и 1, а также значение фитнес-функции.
         """
         population_data = []
-        # TODO: ПЕРЕПИСАТЬ
-        # for key in self.__population.keys():
-        #     population_data.append((self.__get_chromosome(key), self.__population[key]))
-
+        for idv in self.__population.values():
+            population_data.append((idv.chromosome, idv.fitness))
         return population_data
 
 
@@ -69,7 +67,7 @@ class GeneticSolver(KnapsackAbstractSolver):
 
         for _ in range(EPOCH_CNT):
             # отбор родителей
-            ancestors = ...
+            ancestors_gen_nums = self.__choose_ancestors_for_crossing(...)  # TODO: добавить вычисление количества родителей
 
             # применить скрещивание / мутацию
             children = ...
@@ -78,14 +76,14 @@ class GeneticSolver(KnapsackAbstractSolver):
             ...
 
             # обновить популяцию
-            self.__update_population(children, ...)
+            self.__update_population(children, ancestors_gen_nums)
 
         
-        # выбрать лучшую хромосому /////// ВОЗМОЖНО СТОИТ ХРАНИТЬ ТЕКУЩЕГО ЛИДЕРА
+        # выбрать лучшую хромосому /////// TODO: ВОЗМОЖНО СТОИТ ХРАНИТЬ ТЕКУЩЕГО ЛИДЕРА
         best_chrom = ...
         
         # вернуть ответ
-        result_cost = self.get_cost(self.__get_choice_items(best_chrom))
+        result_cost = self.get_cost(self.__get_items_selection_flags(best_chrom))
         result_items_cfg = self.__get_selected_items_idxes(best_chrom)
 
         return KnapsackSolution(result_cost, result_items_cfg)
@@ -99,7 +97,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         return [item_idx for item_idx in len(chrom) if chrom[item_idx] == '1']
 
 
-    def __get_choice_items(self, chrom: str) -> list[bool]:
+    def __get_items_selection_flags(self, chrom: str) -> list[bool]:
         return [gen == '1' for gen in chrom]
 
 
@@ -139,8 +137,28 @@ class GeneticSolver(KnapsackAbstractSolver):
             removing_idv_idx += 1
 
 
+    def __choose_ancestors_for_crossing(self, ancestors_count: int) -> set[int]:
+        ancestors = set()
+        roulette = []
 
-    def __choose_ancestors_for_crossing(self) -> list[Individ]:
+        total_fitness_value = sum(idv.fitness for idv in self.__population.values())
+
+        for idv in self.__population.values():
+            part = total_fitness_value // idv.fitness
+            for _ in range(part):
+                roulette.append(idv.genetic_number);
+        
+        while len(ancestors) != ancestors_count:
+            roulette_choice = rnd.randint(0, len(roulette))
+            idv_num = roulette[roulette_choice]
+
+            if idv_num not in ancestors:
+                ancestors.add(idv_num)
+
+        return ancestors
+
+
+    def __cross_population(self, ancestors: list[int]) -> list[Individ]:
         ...
 
 
@@ -153,8 +171,7 @@ class GeneticSolver(KnapsackAbstractSolver):
 
 
     def __get_fit(self, chromosome: str) -> int:
-        
-        pass
+        return self.get_weight(self.__get_items_selection_flags(chromosome))
 
 
 if __name__ == "__main__":
