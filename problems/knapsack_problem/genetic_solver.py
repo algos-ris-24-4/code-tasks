@@ -65,10 +65,16 @@ class GeneticSolver(KnapsackAbstractSolver):
         is_big = False
         if self.item_cnt > 30:
             is_big = True
+        last_leader = ('', -1)
+        same_leader_epoch = 0
 
-        while current_epoch < epoch_cnt:
+        while current_epoch < epoch_cnt or same_leader_epoch < 50:
             new_population = self.__step_one_form_new_population(is_big)
-            self.__step_two_clean_population(new_population)
+            current_leader = self.__step_two_clean_population(new_population)
+            if current_leader[0] != last_leader[0] and current_leader[1] != last_leader[1]:
+                last_leader = current_leader
+                same_leader_epoch = 0
+            same_leader_epoch += 1
             current_epoch += 1
 
         solution = self.__get_solution_from_population()
@@ -104,10 +110,10 @@ class GeneticSolver(KnapsackAbstractSolver):
         """Второй шаг генетического алгоритма: Ранжирование поколения."""
         all_population = sorted(all_population, key=lambda x: x[1], reverse=True)
         self.__cut_population_excess(all_population)
-        self.__random_mutations()
-        if len(self.__population) < self.__population_cnt:
-                self.__add_random_individuals(self.__population_cnt - len(self.__population))
-        pass
+        # self.__random_mutations()
+        #if len(self.__population) < self.__population_cnt:
+        #    self.__add_random_individuals(self.__population_cnt - len(self.__population))
+        return all_population[0]
     
     def __random_mutations(self):
         """Случайные мутации популяции."""
