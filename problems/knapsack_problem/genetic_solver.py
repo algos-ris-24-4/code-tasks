@@ -16,6 +16,9 @@ EPOCH_CNT = 100
 BRUTE_FORCE_BOUND = 5
 """Размер входных данных задачи, до которого используется полный перебор."""
 
+PARENT_RATIO = 0.25
+
+MUTATION_RATE = 0.02
 
 class GeneticSolver(KnapsackAbstractSolver):
     """Класс для решения задачи о рюкзаке с использованием генетического
@@ -39,8 +42,10 @@ class GeneticSolver(KnapsackAbstractSolver):
         значение.
         """
         super().__init__(weights, costs, weight_limit)
+        if not any(w <= weight_limit for w in weights):
+            raise ValueError("Ни один предмет не помещается в рюкзак.")
         self.__mask = "{0:0" + str(len(weights)) + "b}"
-        self.__population_cnt = min(2**self.item_cnt / 2, POPULATION_LIMIT)
+        self.__population_cnt = min(2 ** self.item_cnt // 2, POPULATION_LIMIT)
         self.__population = self.__generate_population(self.__population_cnt)
 
     @property
@@ -55,19 +60,89 @@ class GeneticSolver(KnapsackAbstractSolver):
 
     def get_knapsack(self, epoch_cnt=EPOCH_CNT) -> KnapsackSolution:
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
-        pass
+        if self.item_cnt <= BRUTE_FORCE_BOUND:
+            return BruteForceSolver(self.weights, self.costs, self.weight_limit).get_knapsack()
 
-    def __generate_population(self, population_cnt: int) -> dict[int:int]:
-        pass
+        self.__population = self.__generate_population(self.__population_cnt)
 
-    def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
-        pass
+        for _ in range(epoch_cnt):
+            ranked = self.__sort_by_fitness()
+            parents = self.__select_parents(ranked)
+            children = self.__apply_genetic_operators(parents, len(ranked))
+            self.__population = self.__form_new_population(children)
+
+        return self.__pick_best_chromosome()
+
+    def __sort_by_fitness(self) -> list[int]:
+        return sorted(
+            self.__population,
+            key=self.__population.__getitem__,
+            reverse=True,
+        )
+
+    def __select_parents(self, ranked: list[int]) -> list[int]:
+        parent_cnt = max(2, int(len(ranked) * PARENT_RATIO))
+        return ranked[:parent_cnt]
+
+    def __apply_genetic_operators(self, parents: list[int], children_cnt: int) -> list[int]:
+        children: list[int] = []
+
+        while len(children) < children_cnt:
+            for idx in range(0, len(parents) - 1, 2):
+                child1, child2 = self.__cross_items(parents[idx], parents[idx+1])
+                children.append(self.__mutation(child1))
+                children.append(self.__mutation(child2))
+        return children
+
+    def __form_new_population(self, children: list[int]) -> dict[int, int]:
+        merged = dict(self.__population)
+        for chromosome in children:
+            if chromosome not in merged:
+                merged[chromosome] = self.__get_fit(chromosome)
+        top = sorted(merged, key=merged.__getitem__, reverse=True)
+        return {chromosome: merged[chromosome] for chromosome in top[:self.__population_cnt]}
+
+    def __pick_best_chromosome(self) -> KnapsackSolution:
+        best = max(self.__population, key=self.__population.__getitem__)
+        best_cost = self.__population[best]
+        items = [i for i in range(self.item_cnt) if best & (1 << (self.item_cnt - 1 - i))]
+        return KnapsackSolution(best_cost, items)
+
+    def __generate_population(self, population_cnt: int) -> dict[int, int]:
+        population: dict[int, int] = {}
+        while len(population) < population_cnt:
+            chromosome = rnd.getrandbits(self.item_cnt)
+            if chromosome not in population:
+                population[chromosome] = self.__get_fit(chromosome)
+        return population
+
+    def __cross_items(self, parent1: int, parent2: int) -> tuple[int, int]:
+        child1, child2 = 0, 0
+        for bit in range(self.item_cnt):
+            if rnd.randint(0, 1):
+                child1 |= parent1 & (1 << bit)
+                child2 |= parent2 & (1 << bit)
+            else:
+                child1 |= parent2 & (1 << bit)
+                child2 |= parent1 & (1 << bit)
+        return child1, child2
 
     def __mutation(self, item_set: int) -> int:
-        pass
+        for bit in range(self.item_cnt):
+            if rnd.random() < MUTATION_RATE:
+                item_set ^= 1 << bit
+        return item_set
 
-    def __get_fit(self, item):
-        pass
+    def __get_fit(self, item: int) -> int:
+        total_weight = 0
+        total_cost = 0
+        for i in range(self.item_cnt):
+            if item & (1 << (self.item_cnt - 1 - i)):
+                total_weight += self.weights[i]
+                if total_weight > self.weight_limit:
+                    return 0
+                total_cost += self.costs[i]
+        return total_cost
 
 
 if __name__ == "__main__":
