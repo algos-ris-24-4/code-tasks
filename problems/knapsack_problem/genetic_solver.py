@@ -44,7 +44,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         """
         super().__init__(weights, costs, weight_limit)
         self.__mask = "{0:0" + str(len(weights)) + "b}"
-        self.__population_cnt = min(2**self.item_cnt / 2, POPULATION_LIMIT)
+        self.__population_cnt = min(2**self.item_cnt // 2, POPULATION_LIMIT)
         self.__population = self.__generate_population(self.__population_cnt)
 
 
@@ -63,26 +63,28 @@ class GeneticSolver(KnapsackAbstractSolver):
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
 
         if self.item_cnt <= BRUTE_FORCE_BOUND:
-            return BruteForceSolver.get_knapsack()
+            solver = BruteForceSolver(self.weights,self.costs,self.weight_limit)
+            return solver.get_knapsack()
 
         for _ in range(EPOCH_CNT):
-            # отбор родителей
-            ancestors_gen_nums = self.__choose_ancestors_for_crossing(...)  # TODO: добавить вычисление количества родителей
+            
+            parents_count = len(self.__population) // 2 
+            ancestors_gen_nums = self.__choose_ancestors_for_crossing(parents_count)  # TODO: добавить вычисление количества родителей
 
-            # применить скрещивание / мутацию
-            children = ...
+            children = self.__cross_population(list(ancestors_gen_nums))
 
-            # mutation???
-            ...
+            mut_children = []
+            for child in children:
+                if rnd.random() < 0.1:
+                    mut_children.append(self.__mutation(child))
+                else: mut_children.append(child)
 
-            # обновить популяцию
-            self.__update_population(children, ancestors_gen_nums)
+            self.__update_population(mut_children, ancestors_gen_nums)
 
+        # Лучшая особь в популяции и лучшая хромосома
+        best_ind = max(self.__population.values(), key=lambda x: x.fitness)
+        best_chrom = best_ind.chromosome
         
-        # выбрать лучшую хромосому /////// TODO: ВОЗМОЖНО СТОИТ ХРАНИТЬ ТЕКУЩЕГО ЛИДЕРА
-        best_chrom = ...
-        
-        # вернуть ответ
         result_cost = self.get_cost(self.__get_items_selection_flags(best_chrom))
         result_items_cfg = self.__get_selected_items_idxes(best_chrom)
 
@@ -90,26 +92,32 @@ class GeneticSolver(KnapsackAbstractSolver):
 
 
     def __get_chromosome(self, number: int) -> str:
+        """Преобразует число в бин строку фиксированной длины"""
         return self.__mask.format(number)
 
 
     def __get_selected_items_idxes(self, chrom: str) -> list[int]:
-        return [item_idx for item_idx in len(chrom) if chrom[item_idx] == '1']
+        """Возвращает список индексов предметов учтенных в комбинации бин строки"""
+        return [item_idx for item_idx in range(len(chrom)) if chrom[item_idx] == '1']
 
 
     def __get_items_selection_flags(self, chrom: str) -> list[bool]:
+        """Возвращает хромосому в виде списка булевых значений"""
         return [gen == '1' for gen in chrom]
 
 
     def __generate_population(self, population_cnt: int) -> dict[int, Individ]:
-        curr_population: dict[int, int] = dict()
+        """Генерация изначальной-первой популяции"""
+        curr_population: dict[int, Individ] = dict()
         
         for _ in range(population_cnt):
+            num = rnd.randint(0, 2**self.item_cnt - 1)
             chrom = self.__get_chromosome(num)
             fit = self.__get_fit(chrom)
 
-            while curr_population.get(num) != None or fit > self.weight_limit:
-                num = rnd.randint(1, len(self.item_cnt))
+            while curr_population.get(num) != None or self.get_weight(
+                self.__get_items_selection_flags(chrom)) > self.weight_limit:
+                num = rnd.randint(0, 2**self.item_cnt - 1)
                 chrom = self.__get_chromosome(num)
                 fit = self.__get_fit(chrom)
 
@@ -141,6 +149,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         ancestors = set()
 
         total_fitness_sum = sum(idv.fitness for idv in self.__population.values())
+
         
         while len(ancestors) < ancestors_count:
             roulette_choice = rnd.randint(0, total_fitness_sum - 1)
@@ -162,7 +171,7 @@ class GeneticSolver(KnapsackAbstractSolver):
             anc1 = self.__population[ancestors[idv_idx]]
             anc2 = self.__population[ancestors[idv_idx + 1]]
 
-            child1, child2 = self.__cross_items(self, anc1, anc2)
+            child1, child2 = self.__cross_items(anc1, anc2)
             children.append(child1)
             children.append(child2)
 
@@ -171,15 +180,48 @@ class GeneticSolver(KnapsackAbstractSolver):
 
 
     def __cross_items(self, ancestor1: Individ, ancestor2: Individ) -> tuple[Individ, Individ]:
-        pass
+        """Создание разреза и формирование новых хромосом"""
+
+        cut_point = rnd.randint(1, self.item_cnt-1)
+
+        child1_chrom = ancestor1.chromosome[:cut_point] + ancestor2.chromosome[cut_point:]
+        child2_chrom = ancestor2.chromosome[:cut_point] + ancestor1.chromosome[cut_point:]
+        
+        child1_num = int(child1_chrom, 2)
+        child2_num = int(child2_chrom, 2)
+        child1_fit = self.__get_fit(child1_chrom)
+        child2_fit = self.__get_fit(child2_chrom)
+
+        return (
+            Individ(child1_num,child1_chrom,child1_fit),
+            Individ(child2_num,child2_chrom,child2_fit)
+        )
 
 
     def __mutation(self, item_set: Individ) -> Individ:
-        pass
+        """Метод мутации хромосомы отдельной особи"""
+
+        chrom = list(item_set.chromosome)
+
+        mut_point = rnd.randint(0, self.item_cnt -1)
+
+        if chrom[mut_point] == '0':
+            chrom[mut_point] = '1'
+        else: 
+            chrom[mut_point] = '0'
+
+        new_chrom = ''.join(chrom)
+        new_num_mut_chrom = int(new_chrom, 2)
+        new_fit_mut_chrom = self.__get_fit(new_chrom)
+
+        return Individ(new_num_mut_chrom,new_chrom,new_fit_mut_chrom)
 
 
     def __get_fit(self, chromosome: str) -> int:
-        return self.get_weight(self.__get_items_selection_flags(chromosome))
+        current = self.__get_items_selection_flags(chromosome)
+        if self.get_weight(current) > self.weight_limit:
+            return 0
+        else: return self.get_cost(current)
 
 
 if __name__ == "__main__":
