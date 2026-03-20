@@ -55,19 +55,77 @@ class GeneticSolver(KnapsackAbstractSolver):
 
     def get_knapsack(self, epoch_cnt=EPOCH_CNT) -> KnapsackSolution:
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
-        pass
+        if self.item_cnt <= BRUTE_FORCE_BOUND:
+            bf_solver = BruteForceSolver(self.weights, self.costs, self.weight_limit)
+            return bf_solver.get_knapsack()
+
+        population_cnt = int(self.__population_cnt)
+        if population_cnt < 2:
+            population_cnt = 2
+
+        for _ in range(epoch_cnt):
+            masks = list(self.__population.keys())
+            fitnesses = list(self.__population.values())
+
+            total_fit = sum(fitnesses)
+            selection_weights = fitnesses if total_fit > 0 else [1] * len(fitnesses)
+
+            next_generation = {}
+
+            best_mask = max(self.__population, key=self.__population.get)
+            best_cost = self.__population[best_mask]
+            next_generation[best_mask] = best_cost
+
+            while len(next_generation) < population_cnt:
+                parent1, parent2 = rnd.choices(masks, weights=selection_weights, k=2)
+                child1, child2 = self.__cross_items(parent1, parent2)
+
+                for child in [child1, child2]:
+                    if len(next_generation) < population_cnt:
+                        mutated_child = self.__mutation(child)
+                        if mutated_child not in next_generation:
+                            next_generation[mutated_child] = self.__get_fit(mutated_child)
+
+            self.__population = next_generation
+
+        best_mask = max(self.__population, key=self.__population.get)
+        best_cost = self.__population[best_mask]
+
+        bits = self.__mask.format(best_mask)
+        items = [idx for idx, bit in enumerate(bits) if bit == '1']
+
+        return KnapsackSolution(cost=best_cost, items=items)
 
     def __generate_population(self, population_cnt: int) -> dict[int:int]:
-        pass
+        pop = {}
+        max_val = 2**self.item_cnt - 1
+        while len(pop) < population_cnt:
+            mask = rnd.randint(0, max_val)
+            if mask not in pop:
+                pop[mask] = self.__get_fit(mask)
+        return pop
 
     def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
-        pass
+        if self.item_cnt < 2:
+            return ancestor1, ancestor2
+            
+        point = rnd.randint(1, self.item_cnt - 1)
+        s1 = self.__mask.format(ancestor1)
+        s2 = self.__mask.format(ancestor2)
+        
+        child1_str = s1[:point] + s2[point:]
+        child2_str = s2[:point] + s1[point:]
+        
+        return int(child1_str, 2), int(child2_str, 2)
 
     def __mutation(self, item_set: int) -> int:
-        pass
+        bit_to_flip = rnd.randint(0, self.item_cnt - 1)
+        return item_set ^ (1 << bit_to_flip)
 
     def __get_fit(self, item):
-        pass
+        bits = self.__mask.format(item)
+        selected = [char == '1' for char in bits]
+        return self.get_cost(selected) 
 
 
 if __name__ == "__main__":
