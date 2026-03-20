@@ -1,5 +1,7 @@
 import random as rnd
+import time as time
 
+from collections import namedtuple
 from problems.knapsack_problem.bb_solver import BranchAndBoundSolver
 from problems.knapsack_problem.brute_force_solver import BruteForceSolver
 from problems.knapsack_problem.knapsack_abs_solver import (
@@ -15,6 +17,8 @@ EPOCH_CNT = 100
 
 BRUTE_FORCE_BOUND = 5
 """Размер входных данных задачи, до которого используется полный перебор."""
+
+Statistics = namedtuple("Statistics", ["population_cnt", "leader", "time", "std", "dispersion", "sx", "costs_curve" ])
 
 class GeneticSolver(KnapsackAbstractSolver):
     """Класс для решения задачи о рюкзаке с использованием генетического
@@ -37,10 +41,23 @@ class GeneticSolver(KnapsackAbstractSolver):
         :raise ValueError: Если в списках присутствует нулевое или отрицательное
         значение.
         """
+        rnd.seed(67)
         super().__init__(weights, costs, weight_limit)
         self.__mask = "{0:0" + str(len(weights)) + "b}"
         self.__population_cnt = int(min(2**self.item_cnt / 2, POPULATION_LIMIT))
         self.__population = self.__generate_population(self.__population_cnt)
+        self.duration_fit = 0
+
+    def get_statistics(self):
+        size_population = len(self.population)
+        leader = sorted(self.population)[0]
+        std = sum([i[1] for i in self.population]) / len(self.population)
+        d = sum([i[1] ** 2 for i in self.population]) / len(self.population) * std ** 2
+        sx = d ** (1/2)
+        costs_curve = [i[1] for i in self.population]
+        time = self.duration_fit
+        return Statistics(size_population,leader,time,std,d,sx,costs_curve)
+
 
     @property
     def population(self) -> list[tuple[str, int]]:
@@ -52,25 +69,19 @@ class GeneticSolver(KnapsackAbstractSolver):
             population_data.append((self.__mask.format(key), self.__population[key]))
         return population_data
     
-    @property
-    def update_population(self) -> int:
-        """Обновляет внутреннее свойство популяции
-        """
-        self.__population_cnt = len(self.population)
-        return self.__population_cnt
-
     def get_knapsack(self, epoch_cnt=EPOCH_CNT) -> KnapsackSolution:
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
         current_epoch = 0
-        is_big = False
-        if self.item_cnt > 30:
-            is_big = True
+        is_small = False
         last_leader = ('', -1)
         same_leader_epoch = 0
-
-        while current_epoch < epoch_cnt or same_leader_epoch < 50:
-            new_population = self.__step_one_form_new_population(is_big)
+        start_timer = time.time()
+        while current_epoch < epoch_cnt and same_leader_epoch < 50:
+            if len(self.population) < int(self.__population_cnt * 0.5):
+                is_small = True
+            new_population = self.__step_one_form_new_population(is_small)
             current_leader = self.__step_two_clean_population(new_population)
+            self.__random_mutations()
             if current_leader[0] != last_leader[0] and current_leader[1] != last_leader[1]:
                 last_leader = current_leader
                 same_leader_epoch = 0
@@ -85,6 +96,8 @@ class GeneticSolver(KnapsackAbstractSolver):
             if(i == "1"):
                 result_items.append(index)
             index += 1 
+
+        self.duration_fit = start_timer - time.time()
         return KnapsackSolution(solution[1], result_items)
     
     def __step_one_form_new_population(self, parent_choose_method: bool):
@@ -109,8 +122,7 @@ class GeneticSolver(KnapsackAbstractSolver):
     def __step_two_clean_population(self, all_population: list):
         """Второй шаг генетического алгоритма: Ранжирование поколения."""
         all_population = sorted(all_population, key=lambda x: x[1], reverse=True)
-        self.__cut_population_excess(all_population)
-        # self.__random_mutations()
+        self.__cut_population_excess(all_population)        
         #if len(self.__population) < self.__population_cnt:
         #    self.__add_random_individuals(self.__population_cnt - len(self.__population))
         return all_population[0]
@@ -146,6 +158,8 @@ class GeneticSolver(KnapsackAbstractSolver):
                     self.__population[new_individual] = fitness
                     added += 1
             attempts += 1
+
+    
     def __get_solution_from_population(self):
         """Извлекает лучшего индивида из популяции и выдает его в качестве."""
         sorted_population = sorted(self.population, key=lambda x: x[1], reverse=True)

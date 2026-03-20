@@ -1,4 +1,5 @@
 from problems.knapsack_problem.genetic_solver import GeneticSolver
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     weights = [11, 4, 8, 6, 3, 5, 5]
@@ -9,15 +10,8 @@ if __name__ == "__main__":
     print(f"Стоимости предметов для комплектования рюкзака: {costs}")
     print(f"Ограничение вместимости рюкзака: {weight_limit}")
 
-        
-    _mask = "{0:0" + str(len(weights)) + "b}" 
-    print(_mask.format(10))
-    print(_mask)
     solver = GeneticSolver(weights, costs, weight_limit)
-    result = solver.get_knapsack()
-
-
-
+    result = solver.get_knapsack()  
 
     print(
         f"Максимальная стоимость: {result.cost}, " f"индексы предметов: {result.items}"
