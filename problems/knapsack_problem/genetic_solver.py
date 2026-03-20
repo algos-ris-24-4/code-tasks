@@ -16,7 +16,6 @@ EPOCH_CNT = 100
 BRUTE_FORCE_BOUND = 5
 """Размер входных данных задачи, до которого используется полный перебор."""
 
-
 class GeneticSolver(KnapsackAbstractSolver):
     """Класс для решения задачи о рюкзаке с использованием генетического
     алгоритма. Для входных данных небольшого размера используется полный
@@ -52,14 +51,20 @@ class GeneticSolver(KnapsackAbstractSolver):
         for key in self.__population.keys():
             population_data.append((self.__mask.format(key), self.__population[key]))
         return population_data
+    
+    @property
+    def update_population(self) -> int:
+        """Обновляет внутреннее свойство популяции
+        """
+        self.__population_cnt = len(self.population)
+        return self.__population_cnt
 
     def get_knapsack(self, epoch_cnt=EPOCH_CNT) -> KnapsackSolution:
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
         current_epoch = 0
+        chooseBothExtremes = False
 
         while current_epoch < epoch_cnt:
-            
-            # Формирование нового поколения
             sorted_population = sorted(self.population, key=lambda x: x[1], reverse=True)
             parents_list = sorted_population[0:int((len(sorted_population)*0.2))] + sorted_population[int((len(sorted_population) * 0.8)):]
 
@@ -71,29 +76,58 @@ class GeneticSolver(KnapsackAbstractSolver):
                 parent2 = parents_list.pop(idx2)
                 children_list += self.__cross_items(parent1, parent2)
                 
-            # Ранжирование особей
             all_population = sorted_population + children_list
             all_population = sorted(all_population, key=lambda x: x[1], reverse=True)
             self.__cut_population_excess(all_population)
 
-            # Рандомные мутации
-            # count_mutation = rnd.randint(1,int(self.__population_cnt * 0.2))
-            # for i in range(0,count_mutation):
-            #     index = rnd.randint(0,self.__population_cnt - 1)
-            #     self.population[index][1] = self.__mutation(self.population[index][1])
+            if len(self.__population) > 0:
+                max_mutations = max(1, len(self.__population) // 2)
+                count_mutation = rnd.randint(1, min(int(self.__population_cnt * 0.2) + 1, max_mutations))
+                count_mutation = min(count_mutation, len(self.__population))
+                
+                mutation_keys = rnd.sample(list(self.__population.keys()), count_mutation)
+                for key in mutation_keys:
+                    mutated = self.__mutation(key)
+                    if mutated != key:
+                        if mutated not in self.__population:
+                            fitness = self.__get_fit(mutated)
+                            if self.__check_vitals(mutated):
+                                self.__population[mutated] = fitness
+                                del self.__population[key]
+            if len(self.__population) < self.__population_cnt:
+                self.__add_random_individuals(self.__population_cnt - len(self.__population))
 
             current_epoch += 1
         solution = self.__get_solution_from_population()
-
-        return KnapsackSolution(int(solution[0],2), [int(i) for i in solution[0]])
+        
+        result_items = []
+        index = 0
+        for i in solution[0]:
+            if(i == "1"):
+                result_items.append(index)
+            index += 1 
+        return KnapsackSolution(solution[1], result_items)
     
-    # Добавить функцию, которая делает инъекцию популяции временной в основную
-
+    def __add_random_individuals(self, needed: int):
+        """Генерирует нужное количество случайных допустимых особей и добавляет в популяцию."""
+        added = 0
+        attempts = 0
+        max_attempts = 1000 * self.item_cnt
+        while added < needed and attempts < max_attempts:
+            new_individual = rnd.randint(1, (1 << self.item_cnt) - 1)
+            if new_individual not in self.__population:
+                fitness = self.__get_fit(new_individual)
+                if self.__check_vitals(new_individual):
+                    self.__population[new_individual] = fitness
+                    added += 1
+            attempts += 1
     def __get_solution_from_population(self):
+        """Извлекает лучшего индивида из популяции и выдает его в качестве."""
         sorted_population = sorted(self.population, key=lambda x: x[1], reverse=True)
         return sorted_population[0]
     
     def __cut_population_excess(self, sorted_population: list):
+        """Меняет внутреннее свойство популяции."""
         self.__population = {}
         count = 0
         for item in sorted_population:
@@ -104,6 +138,7 @@ class GeneticSolver(KnapsackAbstractSolver):
             count += 1
 
     def __generate_population(self, population_cnt: int) -> dict[int:int]:
+        """Инициализирует популяцию."""
         population = {}
         attempts = 0
         max_attempts = 1000 * self.item_cnt                
@@ -112,7 +147,7 @@ class GeneticSolver(KnapsackAbstractSolver):
             
             if new_individual not in population:
                 fitness = self.__get_fit(new_individual)
-                if fitness > 0:
+                if self.__check_vitals(new_individual):
                     population[new_individual] = fitness            
             attempts += 1
         
@@ -120,6 +155,7 @@ class GeneticSolver(KnapsackAbstractSolver):
 
 
     def __cross_items(self, ancestor1: tuple, ancestor2: tuple) -> list[tuple]:
+        """"Скрещивает родителей одноточечным методом, где выбор точки случайный и методом последовательного взятия генов у каждого из родителей."""
         children = []
 
         mask_ancestor1 = ancestor1[0]
@@ -155,25 +191,28 @@ class GeneticSolver(KnapsackAbstractSolver):
                 child_int = int(child_mask, 2)
                 if self.__check_vitals(child_int):
                     fitness = self.__get_fit(child_int)
-                    if fitness > 0:
-                        result.append((child_mask, fitness))
+                    result.append((child_mask, fitness))
 
         return result
 
-    # def __mutation(self, item_set: int) -> int:        
-    #     attempts = 0
-    #     max_attempts = 1000 * self.item_cnt    
-    #     # если ошибка смотрим сюда
-    #     item_mask = self._mask.format(item_set)
-    #     while attempts < max_attempts:
-    #         mut_index = rnd.randint(1, self.item_cnt)
+    def __mutation(self, item_set: int) -> int:        
+        attempts = 0
+        max_attempts = 1000 * self.item_cnt    
+        item_mask = list(self.__mask.format(item_set))
+        while attempts < max_attempts:
+            mut_index = rnd.randint(0, int(self.item_cnt - 1))
             
-    #         item_mask[mut_index] = str(not bool(int(item_mask[mut_index])))
+            item_mask[mut_index] = '1' if item_mask[mut_index] == '0' else '0'
             
-    #         if self.__check_vitals(item_mask):
-    #             break
-    #         attempts += 1
-    #     return int(item_mask,2)
+            mutated_int = int(''.join(item_mask), 2)
+            if self.__check_vitals(mutated_int):
+                return mutated_int
+
+            attempts += 1
+        return item_set
+
+    
+
     def __get_fit(self, item: int):
         mask_item = self.__mask.format(item)
         current_item = 0
@@ -186,6 +225,7 @@ class GeneticSolver(KnapsackAbstractSolver):
             current_item += 1
         if total_weight <= self.weight_limit:
             return total_cost
+        
         return 0
 
     def __check_vitals(self, item: int):
