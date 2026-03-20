@@ -62,42 +62,15 @@ class GeneticSolver(KnapsackAbstractSolver):
     def get_knapsack(self, epoch_cnt=EPOCH_CNT) -> KnapsackSolution:
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
         current_epoch = 0
-        chooseBothExtremes = False
+        is_big = False
+        if self.item_cnt > 30:
+            is_big = True
 
         while current_epoch < epoch_cnt:
-            sorted_population = sorted(self.population, key=lambda x: x[1], reverse=True)
-            parents_list = sorted_population[0:int((len(sorted_population)*0.2))] + sorted_population[int((len(sorted_population) * 0.8)):]
-
-            children_list = []
-            while len(parents_list) >= 2:
-                idx1 = rnd.randint(0, len(parents_list) - 1)
-                parent1 = parents_list.pop(idx1)
-                idx2 = rnd.randint(0, len(parents_list) - 1)
-                parent2 = parents_list.pop(idx2)
-                children_list += self.__cross_items(parent1, parent2)
-                
-            all_population = sorted_population + children_list
-            all_population = sorted(all_population, key=lambda x: x[1], reverse=True)
-            self.__cut_population_excess(all_population)
-
-            if len(self.__population) > 0:
-                max_mutations = max(1, len(self.__population) // 2)
-                count_mutation = rnd.randint(1, min(int(self.__population_cnt * 0.2) + 1, max_mutations))
-                count_mutation = min(count_mutation, len(self.__population))
-                
-                mutation_keys = rnd.sample(list(self.__population.keys()), count_mutation)
-                for key in mutation_keys:
-                    mutated = self.__mutation(key)
-                    if mutated != key:
-                        if mutated not in self.__population:
-                            fitness = self.__get_fit(mutated)
-                            if self.__check_vitals(mutated):
-                                self.__population[mutated] = fitness
-                                del self.__population[key]
-            if len(self.__population) < self.__population_cnt:
-                self.__add_random_individuals(self.__population_cnt - len(self.__population))
-
+            new_population = self.__step_one_form_new_population(is_big)
+            self.__step_two_clean_population(new_population)
             current_epoch += 1
+
         solution = self.__get_solution_from_population()
         
         result_items = []
@@ -108,6 +81,52 @@ class GeneticSolver(KnapsackAbstractSolver):
             index += 1 
         return KnapsackSolution(solution[1], result_items)
     
+    def __step_one_form_new_population(self, parent_choose_method: bool):
+        """Первый шаг генетического алгоритма: Формирование нового поколения."""
+        sorted_population = sorted(self.population, key=lambda x: x[1], reverse=True)
+
+        if parent_choose_method:
+            parents_list = sorted_population[0:int((len(sorted_population)*0.2))] + sorted_population[int((len(sorted_population) * 0.8)):]
+        else:
+            parents_list = sorted_population[0:int((len(sorted_population)*0.4))]
+
+        children_list = []
+        while len(parents_list) >= 2:
+            idx1 = rnd.randint(0, len(parents_list) - 1)
+            parent1 = parents_list.pop(idx1)
+            idx2 = rnd.randint(0, len(parents_list) - 1)
+            parent2 = parents_list.pop(idx2)
+            children_list += self.__cross_items(parent1, parent2)
+        all_population = sorted_population + children_list
+        return all_population
+    
+    def __step_two_clean_population(self, all_population: list):
+        """Второй шаг генетического алгоритма: Ранжирование поколения."""
+        all_population = sorted(all_population, key=lambda x: x[1], reverse=True)
+        self.__cut_population_excess(all_population)
+        self.__random_mutations()
+        if len(self.__population) < self.__population_cnt:
+                self.__add_random_individuals(self.__population_cnt - len(self.__population))
+        pass
+    
+    def __random_mutations(self):
+        """Случайные мутации популяции."""
+        if len(self.__population) > 0:
+            max_mutations = max(1, len(self.__population) // 2)
+            count_mutation = rnd.randint(1, min(int(self.__population_cnt * 0.2) + 1, max_mutations))
+            count_mutation = min(count_mutation, len(self.__population))
+            
+            mutation_keys = rnd.sample(list(self.__population.keys()), count_mutation)
+            for key in mutation_keys:
+                mutated = self.__mutation(key)
+                if mutated != key:
+                    if mutated not in self.__population:
+                        fitness = self.__get_fit(mutated)
+                        if self.__check_vitals(mutated):
+                            self.__population[mutated] = fitness
+                            del self.__population[key]
+        pass
+
     def __add_random_individuals(self, needed: int):
         """Генерирует нужное количество случайных допустимых особей и добавляет в популяцию."""
         added = 0
@@ -164,7 +183,6 @@ class GeneticSolver(KnapsackAbstractSolver):
         buffer_child1 = ""
         buffer_child2 = ""
 
-        # 1. последовательный перенос генов 0101 + 1010 = 1111 и 0000
         while position < len(mask_ancestor1):
             if position % 2 == 0:
                 buffer_child1 += mask_ancestor1[position]
@@ -173,13 +191,11 @@ class GeneticSolver(KnapsackAbstractSolver):
                 buffer_child1 += mask_ancestor2[position]
                 buffer_child2 += mask_ancestor1[position]
             position += 1
+
         children.append((buffer_child1, buffer_child2))
 
-        # 2. одноточечное скрещивание, где позиция точки - рандомна
         position = 0
-
         pivot = rnd.randint(1, self.item_cnt - 1)
-
         buffer_child1 = mask_ancestor1[0:pivot] + mask_ancestor2[pivot:]
         buffer_child2 = mask_ancestor2[0:pivot] + mask_ancestor1[pivot:]
         
@@ -195,7 +211,8 @@ class GeneticSolver(KnapsackAbstractSolver):
 
         return result
 
-    def __mutation(self, item_set: int) -> int:        
+    def __mutation(self, item_set: int) -> int:  
+        """Применяет мутацию на индивида"""      
         attempts = 0
         max_attempts = 1000 * self.item_cnt    
         item_mask = list(self.__mask.format(item_set))
@@ -211,9 +228,8 @@ class GeneticSolver(KnapsackAbstractSolver):
             attempts += 1
         return item_set
 
-    
-
     def __get_fit(self, item: int):
+        """Фитнесс-функция."""
         mask_item = self.__mask.format(item)
         current_item = 0
         total_cost = 0
@@ -229,6 +245,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         return 0
 
     def __check_vitals(self, item: int):
+        """Проверяет, является ли особь жизнеспособной."""
         mask_item = self.__mask.format(item)
         current_item = 0
         total_weight = 0
