@@ -19,7 +19,7 @@ BRUTE_FORCE_BOUND = 5
 """Размер входных данных задачи, до которого используется полный перебор."""
 
 
-Individual = namedtuple("Individual", ["genetic_code", "chromosome", "fitness"]);
+Individ = namedtuple("Individ", ["genetic_number", "chromosome", "fitness"]);
 
 class GeneticSolver(KnapsackAbstractSolver):
     """Класс для решения задачи о рюкзаке с использованием генетического
@@ -47,6 +47,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         self.__population_cnt = min(2**self.item_cnt / 2, POPULATION_LIMIT)
         self.__population = self.__generate_population(self.__population_cnt)
 
+
     @property
     def population(self) -> list[tuple[str, int]]:
         """Возвращает список особей текущей популяции. Для каждой особи
@@ -66,56 +67,90 @@ class GeneticSolver(KnapsackAbstractSolver):
         if self.item_cnt <= BRUTE_FORCE_BOUND:
             return BruteForceSolver.get_knapsack()
 
-        for epoch_num in range(1, EPOCH_CNT + 1):
+        for _ in range(EPOCH_CNT):
+            # отбор родителей
+            ancestors = ...
 
-            if epoch_num != 1:
-                self.__population = self.__generate_generation(...)
+            # применить скрещивание / мутацию
+            children = ...
 
-            if epoch_num != EPOCH_CNT:
-                # отбор родителей
-                ...
-                # применить скрещивание / мутацию
-                ...
+            # mutation???
+            ...
+
+            # обновить популяцию
+            self.__update_population(children, ...)
+
         
         # выбрать лучшую хромосому /////// ВОЗМОЖНО СТОИТ ХРАНИТЬ ТЕКУЩЕГО ЛИДЕРА
-        ...
+        best_chrom = ...
         
-        # получить индексы предметов для ответа
-        ...
-        # отдать решение
-        return KnapsackSolution(self.get_cost(...), ...)
+        # вернуть ответ
+        result_cost = self.get_cost(self.__get_choice_items(best_chrom))
+        result_items_cfg = self.__get_selected_items_idxes(best_chrom)
+
+        return KnapsackSolution(result_cost, result_items_cfg)
+
 
     def __get_chromosome(self, number: int) -> str:
         return self.__mask.format(number)
 
-    def __generate_population(self, population_cnt: int) -> dict[int, Individual]:
+
+    def __get_selected_items_idxes(self, chrom: str) -> list[int]:
+        return [item_idx for item_idx in len(chrom) if chrom[item_idx] == '1']
+
+
+    def __get_choice_items(self, chrom: str) -> list[bool]:
+        return [gen == '1' for gen in chrom]
+
+
+    def __generate_population(self, population_cnt: int) -> dict[int, Individ]:
         curr_population: dict[int, int] = dict()
-
+        
         for _ in range(population_cnt):
-            num = rnd.randint(1, len(self.item_cnt))
-
-            while curr_population.get(num) != None:
-                num = rnd.randint(1, len(self.item_cnt))
-
             chrom = self.__get_chromosome(num)
             fit = self.__get_fit(chrom)
 
-            curr_population[num] = Individual(num, chrom, fit)
+            while curr_population.get(num) != None or fit > self.weight_limit:
+                num = rnd.randint(1, len(self.item_cnt))
+                chrom = self.__get_chromosome(num)
+                fit = self.__get_fit(chrom)
+
+            curr_population[num] = Individ(num, chrom, fit)
 
         return curr_population
     
-    def __generate_generation(self, children, ancestors) -> dict[int, Individual]:
-        
-        pass
 
-    def __choose_ancestors_for_crossing() -> list[Individual]:
+    def __update_population(self, children: list[Individ], ancestors_gen_numbers: list[int]) -> None:
+        # TODO: подумать над дубликатами и ухудшением 
+        
+        sorted_individs = sorted(self.__population.values(), key=lambda idv: idv.fitness)
+
+        removing_idv_idx = 0
+        for adding_individ in children:
+            
+            removing_individ = sorted_individs[removing_idv_idx]
+            while removing_individ.genetic_number in ancestors_gen_numbers:
+                removing_idv_idx += 1
+                removing_individ = sorted_individs[removing_idv_idx]
+
+            del self.__population[removing_individ.genetic_number]
+            self.__population[adding_individ.genetic_number] = adding_individ
+
+            removing_idv_idx += 1
+
+
+
+    def __choose_ancestors_for_crossing(self) -> list[Individ]:
         ...
 
-    def __cross_items(self, ancestor1: Individual, ancestor2: Individual) -> list[Individual]:
+
+    def __cross_items(self, ancestor1: Individ, ancestor2: Individ) -> list[Individ]:
         pass
 
-    def __mutation(self, item_set: Individual) -> Individual:
+
+    def __mutation(self, item_set: Individ) -> Individ:
         pass
+
 
     def __get_fit(self, chromosome: str) -> int:
         
