@@ -44,8 +44,13 @@ class GeneticSolver(KnapsackAbstractSolver):
         """
         super().__init__(weights, costs, weight_limit)
         self.__mask = "{0:0" + str(len(weights)) + "b}"
-        self.__population_cnt = min(2**self.item_cnt // 2, POPULATION_LIMIT)
-        self.__population = self.__generate_population(self.__population_cnt)
+
+        if self.item_cnt <= BRUTE_FORCE_BOUND:
+            self.__population_cnt = 0
+            self.__population = {}
+        else:
+            self.__population_cnt = min(2**self.item_cnt // 2, POPULATION_LIMIT)
+            self.__population = self.__generate_population(self.__population_cnt)
 
 
     @property
@@ -66,7 +71,7 @@ class GeneticSolver(KnapsackAbstractSolver):
             solver = BruteForceSolver(self.weights,self.costs,self.weight_limit)
             return solver.get_knapsack()
 
-        for _ in range(EPOCH_CNT):
+        for _ in range(epoch_cnt):
             
             parents_count = len(self.__population) // 2 
             ancestors_gen_nums = self.__choose_ancestors_for_crossing(parents_count)  # TODO: добавить вычисление количества родителей
@@ -127,11 +132,8 @@ class GeneticSolver(KnapsackAbstractSolver):
     
 
     def __update_population(self, children: list[Individ], ancestors_gen_numbers: set[int]) -> None:
-
         
-        sorted_individs = sorted(self.__population.values(), key=lambda idv: idv.fitness)
-
-        removing_idv_idx = 0
+        
         for adding_individ in children:
 
             if adding_individ.genetic_number in self.__population:
@@ -142,16 +144,19 @@ class GeneticSolver(KnapsackAbstractSolver):
                         adding_individ = self.__mutation(adding_individ)
                     else:
                         break
-
-            removing_individ = sorted_individs[removing_idv_idx]
-            while removing_individ.genetic_number in ancestors_gen_numbers:
-                removing_idv_idx += 1
-                removing_individ = sorted_individs[removing_idv_idx]
+                            
+            sorted_individs = sorted(self.__population.values(), key=lambda idv: idv.fitness)              
+            removing_individ = None
+            for indv in sorted_individs:
+                if indv.genetic_number not in ancestors_gen_numbers:
+                    removing_individ = indv
+                    break
+            if removing_individ is None:
+                break
 
             del self.__population[removing_individ.genetic_number]
             self.__population[adding_individ.genetic_number] = adding_individ
 
-            removing_idv_idx += 1
 
 
     def __choose_ancestors_for_crossing(self, ancestors_count: int) -> set[int]:
@@ -160,8 +165,9 @@ class GeneticSolver(KnapsackAbstractSolver):
         total_fitness_sum = sum(idv.fitness for idv in self.__population.values())
 
         if total_fitness_sum == 0:
-            numbers = list(self.population.keys())
-            while len(ancestors) < ancestors_count:
+            numbers = list(self.__population.keys())
+            needed = min(ancestors_count, len(numbers))
+            while len(ancestors) < needed:
                 ancestors.add(rnd.choice(numbers))
             return ancestors
         
