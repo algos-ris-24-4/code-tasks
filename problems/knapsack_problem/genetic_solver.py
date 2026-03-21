@@ -18,6 +18,7 @@ EPOCH_CNT = 100
 BRUTE_FORCE_BOUND = 5
 """Размер входных данных задачи, до которого используется полный перебор."""
 
+MUTATION_CHANCE = 0.2
 
 Individ = namedtuple("Individ", ["genetic_number", "chromosome", "fitness"]);
 
@@ -78,9 +79,8 @@ class GeneticSolver(KnapsackAbstractSolver):
             children = self.__cross_population(list(ancestors_gen_nums))
 
             mut_children = set()
-
             for child in children:
-                if rnd.random() < 0.2:
+                if rnd.random() < MUTATION_CHANCE:
                     mut_child_chrom = self.__mutation_chrom_wrap(child.chromosome)
                     mut_children.add(Individ(int(mut_child_chrom, 2), mut_child_chrom, self.__get_fit(mut_child_chrom)))
                 else: 
@@ -112,6 +112,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         return [gen == '1' for gen in chrom]
 
 
+
     def __generate_population(self, population_cnt: int) -> dict[int, Individ]:
         """Генерация изначальной-первой популяции"""
         curr_population: dict[int, Individ] = dict()
@@ -119,14 +120,14 @@ class GeneticSolver(KnapsackAbstractSolver):
         for _ in range(population_cnt):
             num = rnd.randint(0, 2**self.item_cnt - 1)
             chrom = self.__get_chromosome(num)
-            fit = self.__get_fit(chrom)
 
-            while curr_population.get(num) is not None or not(self.__is_individ_valid(chrom)):
+            attempts = 0
+            while (curr_population.get(num) is not None or not(self.__is_individ_valid(chrom))) and attempts < 1000:
                 num = rnd.randint(0, 2**self.item_cnt - 1)
                 chrom = self.__get_chromosome(num)
-                fit = self.__get_fit(chrom)
+                attempts += 1
 
-            curr_population[num] = Individ(num, chrom, fit)
+            curr_population[num] = Individ(num, chrom, self.__get_fit(chrom))
 
         return curr_population
     
@@ -149,7 +150,7 @@ class GeneticSolver(KnapsackAbstractSolver):
                     break
 
             if removing_individ is None:
-                break
+                continue
 
             del self.__population[removing_individ.genetic_number]
             removed_individs.add(removing_individ.genetic_number)
@@ -201,11 +202,11 @@ class GeneticSolver(KnapsackAbstractSolver):
         child1_chrom = ancestor1.chromosome[:cut_point] + ancestor2.chromosome[cut_point:]
         child2_chrom = ancestor2.chromosome[:cut_point] + ancestor1.chromosome[cut_point:]
         
-        if self.__is_need_mutaion(child1_chrom):
-            child1_chrom = self.__mutation_chrom_wrap(child1_chrom)
+        # if self.__is_need_mutaion(child1_chrom):
+        #     child1_chrom = self.__mutation_chrom_wrap(child1_chrom)
 
-        if self.__is_need_mutaion(child2_chrom):
-            child2_chrom = self.__mutation_chrom_wrap(child2_chrom)
+        # if self.__is_need_mutaion(child2_chrom):
+        #     child2_chrom = self.__mutation_chrom_wrap(child2_chrom)
 
         child1 = Individ(int(child1_chrom, 2), child1_chrom, self.__get_fit(child1_chrom))
         child2 = Individ(int(child2_chrom, 2), child2_chrom, self.__get_fit(child2_chrom))
@@ -235,7 +236,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         new_chrom = self.__mutation_chrom(chrom)
         attempt = 0
         while self.__is_need_mutaion(new_chrom) and attempt < 1000:
-            new_chrom = self.__mutation_chrom(chrom)
+            new_chrom = self.__mutation_chrom(new_chrom)
             attempt += 1
         return new_chrom
 
