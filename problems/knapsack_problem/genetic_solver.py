@@ -45,14 +45,27 @@ class GeneticSolver(KnapsackAbstractSolver):
         super().__init__(weights, costs, weight_limit)
         self.__mask = "{0:0" + str(len(weights)) + "b}"
         self.__population_cnt = int(min(2**self.item_cnt / 2, POPULATION_LIMIT))
-        self.__population = self.__generate_population(self.__population_cnt)
+
+        is_low_diversity = False
+        diversity = 0
+
+        std = sum(weights) / len(weights)
+        d = sum([i ** 2 for i in weights]) / len(weights) - std ** 2
+        s = d ** (1/2)
+
+        std_min = std - s
+        diversity = int(weight_limit / std_min)
+
+        is_low_diversity = diversity >= 3
+
+        self.__population = self.__generate_population(self.__population_cnt) if is_low_diversity else self.__generate_population_diversity(diversity)
         self.duration_fit = 0
 
     def get_statistics(self):
         size_population = len(self.population)
         leader = sorted(self.population)[0]
         std = sum([i[1] for i in self.population]) / len(self.population)
-        d = sum([i[1] ** 2 for i in self.population]) / len(self.population) * std ** 2
+        d = sum([i[1] ** 2 for i in self.population]) / len(self.population) - std ** 2
         sx = d ** (1/2)
         costs_curve = [i[1] for i in self.population]
         time = self.duration_fit
@@ -79,6 +92,8 @@ class GeneticSolver(KnapsackAbstractSolver):
         while current_epoch < epoch_cnt and same_leader_epoch < 50:
             if len(self.population) < int(self.__population_cnt * 0.5):
                 is_small = True
+            else:
+                is_small = False
             new_population = self.__step_one_form_new_population(is_small)
             current_leader = self.__step_two_clean_population(new_population)
             self.__random_mutations()
@@ -100,14 +115,36 @@ class GeneticSolver(KnapsackAbstractSolver):
         self.duration_fit = start_timer - time.time()
         return KnapsackSolution(solution[1], result_items)
     
+    def __generate_population_diversity(self, max_items: int) -> dict[int, int]:
+        """
+        Генерирует все возможные комбинации из 1..int(max_items) предметов,
+        которые помещаются в рюкзак по весу.
+        Возвращает словарь {маска: стоимость}.
+        """
+        from itertools import combinations
+        k_max = int(max_items)
+        if k_max < 1:
+            return {}
+        population = {}
+        for k in range(1, min(k_max, self.item_cnt) + 1):
+            for combo in combinations(range(self.item_cnt), k):
+                total_weight = sum(self.weights[i] for i in combo)
+                if total_weight <= self.weight_limit:
+                    mask = 0
+                    total_cost = 0
+                    for i in combo:
+                        mask |= 1 << i
+                        total_cost += self.costs[i]
+                    population[mask] = total_cost
+        return population
     def __step_one_form_new_population(self, parent_choose_method: bool):
         """Первый шаг генетического алгоритма: Формирование нового поколения."""
         sorted_population = sorted(self.population, key=lambda x: x[1], reverse=True)
 
         if parent_choose_method:
-            parents_list = sorted_population[0:int((len(sorted_population)*0.2))] + sorted_population[int((len(sorted_population) * 0.8)):]
-        else:
             parents_list = sorted_population[0:int((len(sorted_population)*0.4))]
+        else:
+            parents_list = sorted_population[0:int((len(sorted_population)*0.2))] + sorted_population[int((len(sorted_population) * 0.8)):]
 
         children_list = []
         while len(parents_list) >= 2:
