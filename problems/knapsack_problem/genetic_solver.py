@@ -38,6 +38,8 @@ class GeneticSolver(KnapsackAbstractSolver):
 
         population_cnt = self.__population_cnt
         start_time = time.perf_counter()
+        best_ever_fit = -1
+        stag_counter = 0
 
         if time_limit_sec is not None and time_limit_sec <= 0:
             best_item, best_fit = max(self.__population.items(), key=lambda item: item[1])
@@ -67,7 +69,7 @@ class GeneticSolver(KnapsackAbstractSolver):
                 for child in (child1, child2):
                     if time_limit_sec is not None and time.perf_counter() - start_time >= time_limit_sec:
                         break
-                            
+
                     for mut in range(3):
                         fit = self.__get_fit(child)
                         is_duplicate = child in self.__population or child in progeny
@@ -76,13 +78,22 @@ class GeneticSolver(KnapsackAbstractSolver):
                             break
                         if mut < 2:
                             child = self.__mutation(child)
-                    
+
                     if time_limit_sec is not None and time.perf_counter() - start_time >= time_limit_sec:
                         break
 
             combined = {**self.__population, **progeny}
             sorted_combined = sorted(combined.items(), key=lambda x: x[1], reverse=True)
             self.__population = dict(sorted_combined[:population_cnt])
+
+            current_best = max(self.__population.items(), key=lambda x: x[1])[1]
+            if current_best > best_ever_fit:
+                best_ever_fit = current_best
+                stag_counter = 0
+            else:
+                stag_counter += 1
+                if stag_counter > 50:
+                    break
 
         best_item, best_fit = max(self.__population.items(), key=lambda item: item[1])
         return KnapsackSolution(
@@ -172,15 +183,18 @@ class GeneticSolver(KnapsackAbstractSolver):
 
     def __get_fit(self, item):
         n = self.item_cnt
+        weights = self.weights
+        costs = self.costs
+        limit = self.weight_limit
         x = item
         total_weight = 0
         total_cost = 0
         for i in range(n - 1, -1, -1):
             if x & 1:
-                total_weight += self.weights[i]
-                if total_weight > self.weight_limit:
+                total_weight += weights[i]
+                if total_weight > limit:
                     return 0
-                total_cost += self.costs[i]
+                total_cost += costs[i]
             x >>= 1
         return total_cost
 
