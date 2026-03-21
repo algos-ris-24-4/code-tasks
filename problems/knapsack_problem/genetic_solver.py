@@ -80,13 +80,13 @@ class GeneticSolver(KnapsackAbstractSolver):
             mut_children = set()
 
             for child in children:
-                if rnd.random() < 0.1:
+                if rnd.random() < 0.2:
                     mut_child_chrom = self.__mutation_chrom_wrap(child.chromosome)
                     mut_children.add(Individ(int(mut_child_chrom, 2), mut_child_chrom, self.__get_fit(mut_child_chrom)))
                 else: 
                     mut_children.add(child)
 
-            self.__update_population(mut_children, ancestors_gen_nums)
+            self.__update_population(list(mut_children), ancestors_gen_nums)
 
         best_ind = max(self.__population.values(), key=lambda x: x.fitness)
         best_chrom = best_ind.chromosome
