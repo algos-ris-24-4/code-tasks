@@ -1,3 +1,4 @@
+import heapq
 import random as rnd
 
 from problems.knapsack_problem.bb_solver import BranchAndBoundSolver
@@ -42,6 +43,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         self.__mask = "{0:0" + str(len(weights)) + "b}"
         self.__population_cnt = min(2 ** self.item_cnt / 2, POPULATION_LIMIT)
         self.__fit_cache: dict[int, int] = {}
+        self.__weight_cache: dict[int, int] = {}
         self.__population = self.__generate_population(self.__population_cnt)
 
     @property
@@ -64,18 +66,16 @@ class GeneticSolver(KnapsackAbstractSolver):
         pop_size = int(self.__population_cnt)
 
         for _ in range(epoch_cnt):
-            sorted_pop = sorted(
-                self.__population.items(), key=lambda x: x[1], reverse=True
-            )
-            parent_cnt = max(2, len(sorted_pop) // 2)
-            parents = [item_set for item_set, _ in sorted_pop[:parent_cnt]]
+            parent_cnt = max(2, len(self.__population) // 2)
+            top = heapq.nlargest(parent_cnt, self.__population.items(), key=lambda x: x[1])
+            parents = [item_set for item_set, _ in top]
             rnd.shuffle(parents)
 
             offspring: dict[int, int] = {}
             for i in range(0, len(parents) - 1, 2):
                 child1, child2 = self.__cross_items(parents[i], parents[i + 1])
                 for child in (child1, child2):
-                    for _ in range(self.item_cnt):
+                    for _ in range(5):
                         if child == 0:
                             child = self.__mutation(child)
                             continue
@@ -87,10 +87,9 @@ class GeneticSolver(KnapsackAbstractSolver):
                         child = self.__mutation(child)
 
             combined = {**self.__population, **offspring}
-            sorted_combined = sorted(
-                combined.items(), key=lambda x: x[1], reverse=True
+            self.__population = dict(
+                heapq.nlargest(pop_size, combined.items(), key=lambda x: x[1])
             )
-            self.__population = dict(sorted_combined[:pop_size])
 
         best_item, best_fit = max(self.__population.items(), key=lambda x: x[1])
         items = [
@@ -99,7 +98,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         ]
         return KnapsackSolution(cost=best_fit, items=items)
 
-    def __generate_population(self, population_cnt: int) -> dict[int:int]:
+    def __generate_population(self, population_cnt: int) -> dict[int, int]:
         """Создаёт начальную популяцию случайных валидных особей."""
         population: dict[int, int] = {}
         max_item = (1 << self.item_cnt) - 1
@@ -143,7 +142,15 @@ class GeneticSolver(KnapsackAbstractSolver):
     def __mutation(self, item_set: int) -> int:
         """Мутация: инвертирует один случайный бит особи."""
         bit_pos = rnd.randint(0, self.item_cnt - 1)
-        return item_set ^ (1 << bit_pos)
+        mutated = item_set ^ (1 << bit_pos)
+        if item_set in self.__weight_cache:
+            old_weight = self.__weight_cache[item_set]
+            item_idx = self.item_cnt - 1 - bit_pos
+            if mutated & (1 << bit_pos):
+                self.__weight_cache[mutated] = old_weight + self._weights[item_idx]
+            else:
+                self.__weight_cache[mutated] = old_weight - self._weights[item_idx]
+        return mutated
 
     def __get_fit(self, item_set: int) -> int:
         """Фитнес-функция: стоимость набора, если вес не превышает лимит, иначе 0."""
@@ -152,11 +159,27 @@ class GeneticSolver(KnapsackAbstractSolver):
         weights = self._weights
         costs = self._costs
         limit = self._weight_limit
+
+        if item_set in self.__weight_cache:
+            total_weight = self.__weight_cache[item_set]
+            if total_weight > limit:
+                self.__fit_cache[item_set] = 0
+                return 0
+            total_cost = 0
+            tmp = item_set
+            i = self.item_cnt - 1
+            while tmp:
+                if tmp & 1:
+                    total_cost += costs[i]
+                tmp >>= 1
+                i -= 1
+            self.__fit_cache[item_set] = total_cost
+            return total_cost
+        
         total_weight = 0
         total_cost = 0
         tmp = item_set
         i = self.item_cnt - 1
-
         while tmp:
             if tmp & 1:
                 total_weight += weights[i]
@@ -166,6 +189,7 @@ class GeneticSolver(KnapsackAbstractSolver):
                 total_cost += costs[i]
             tmp >>= 1
             i -= 1
+        self.__weight_cache[item_set] = total_weight
         self.__fit_cache[item_set] = total_cost
         return total_cost
 
