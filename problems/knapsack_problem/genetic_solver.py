@@ -68,7 +68,7 @@ class GeneticSolver(KnapsackAbstractSolver):
             fitnesses = list(self.__population.values())
 
             total_fit = sum(fitnesses)
-            selection_weights = fitnesses if total_fit > 0 else [1] * len(fitnesses)
+            selection_weights = fitnesses
 
             next_generation = {}
 
@@ -83,8 +83,9 @@ class GeneticSolver(KnapsackAbstractSolver):
                 for child in [child1, child2]:
                     if len(next_generation) < population_cnt:
                         mutated_child = self.__mutation(child)
-                        if mutated_child not in next_generation:
-                            next_generation[mutated_child] = self.__get_fit(mutated_child)
+                        child_fit = self.__get_fit(mutated_child)
+                        if child_fit > 0 and mutated_child not in next_generation:
+                            next_generation[mutated_child] = child_fit
 
             self.__population = next_generation
 
@@ -101,8 +102,9 @@ class GeneticSolver(KnapsackAbstractSolver):
         max_val = 2**self.item_cnt - 1
         while len(pop) < population_cnt:
             mask = rnd.randint(0, max_val)
-            if mask not in pop:
-                pop[mask] = self.__get_fit(mask)
+            fit = self.__get_fit(mask)
+            if fit > 0 and mask not in pop: # Только те, кто влез по весу
+                pop[mask] = fit
         return pop
 
     def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
