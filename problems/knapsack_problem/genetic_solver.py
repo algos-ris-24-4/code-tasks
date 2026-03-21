@@ -73,28 +73,40 @@ class GeneticSolver(KnapsackAbstractSolver):
             return solver.get_knapsack()
 
         for _ in range(epoch_cnt):
-            parents_count = len(self.__population) // 2 
+            parents_count = self.__calc_parent_count()
             ancestors_gen_nums = self.__choose_ancestors_for_crossing(parents_count)
 
             children = self.__cross_population(list(ancestors_gen_nums))
+            mut_children = self.__apply_possible_mutation(children)
 
-            mut_children = set()
-            for child in children:
-                if rnd.random() < MUTATION_CHANCE:
-                    mut_child_chrom = self.__mutation_chrom(child.chromosome)
-                    mut_children.add(Individ(int(mut_child_chrom, 2), mut_child_chrom, self.__get_fit(mut_child_chrom)))
-                else: 
-                    mut_children.add(child)
+            self.__update_population(mut_children, ancestors_gen_nums)
 
-            self.__update_population(list(mut_children), ancestors_gen_nums)
+        return self.__get_result()
 
+
+    def __get_result(self) -> KnapsackSolution:
         best_ind = max(self.__population.values(), key=lambda x: x.fitness)
         best_chrom = best_ind.chromosome
         
         result_cost = self.get_cost(self.__get_items_selection_flags(best_chrom))
         result_items_cfg = self.__get_selected_items_idxes(best_chrom)
 
-        return KnapsackSolution(result_cost, result_items_cfg)
+        return KnapsackSolution(result_cost, result_items_cfg)        
+
+
+    def __calc_parent_count(self):
+        return len(self.__population) // 2 
+
+
+    def __apply_possible_mutation(self, children: list[Individ]) -> list[Individ]:
+        mut_children = set()
+        for child in children:
+            if rnd.random() < MUTATION_CHANCE:
+                mut_child_chrom = self.__mutation_chrom(child.chromosome)
+                mut_children.add(Individ(int(mut_child_chrom, 2), mut_child_chrom, self.__get_fit(mut_child_chrom)))
+            else: 
+                mut_children.add(child)
+        return list(mut_children)
 
 
     def __get_chromosome(self, number: int) -> str:
