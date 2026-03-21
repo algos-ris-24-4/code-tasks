@@ -81,7 +81,7 @@ class GeneticSolver(KnapsackAbstractSolver):
             mut_children = set()
             for child in children:
                 if rnd.random() < MUTATION_CHANCE:
-                    mut_child_chrom = self.__mutation_chrom_wrap(child.chromosome)
+                    mut_child_chrom = self.__mutation_chrom(child.chromosome)
                     mut_children.add(Individ(int(mut_child_chrom, 2), mut_child_chrom, self.__get_fit(mut_child_chrom)))
                 else: 
                     mut_children.add(child)
@@ -201,12 +201,6 @@ class GeneticSolver(KnapsackAbstractSolver):
 
         child1_chrom = ancestor1.chromosome[:cut_point] + ancestor2.chromosome[cut_point:]
         child2_chrom = ancestor2.chromosome[:cut_point] + ancestor1.chromosome[cut_point:]
-        
-        # if self.__is_need_mutaion(child1_chrom):
-        #     child1_chrom = self.__mutation_chrom_wrap(child1_chrom)
-
-        # if self.__is_need_mutaion(child2_chrom):
-        #     child2_chrom = self.__mutation_chrom_wrap(child2_chrom)
 
         child1 = Individ(int(child1_chrom, 2), child1_chrom, self.__get_fit(child1_chrom))
         child2 = Individ(int(child2_chrom, 2), child2_chrom, self.__get_fit(child2_chrom))
@@ -224,21 +218,6 @@ class GeneticSolver(KnapsackAbstractSolver):
             chrom_lst[mut_point] = '0'
 
         return ''.join(chrom_lst)        
-
-
-    def __is_need_mutaion(self, chrom: str):
-        return not(self.__is_individ_valid(chrom)) or self.__population.get(int(chrom, 2)) is not None
-
-
-    def __mutation_chrom_wrap(self, chrom: str) -> str:
-        """Метод мутации хромосомы отдельной особи"""
-
-        new_chrom = self.__mutation_chrom(chrom)
-        attempt = 0
-        while self.__is_need_mutaion(new_chrom) and attempt < 1000:
-            new_chrom = self.__mutation_chrom(new_chrom)
-            attempt += 1
-        return new_chrom
 
 
     def __is_individ_valid(self, chromosome: str) -> bool:
