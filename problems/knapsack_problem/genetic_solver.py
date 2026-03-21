@@ -11,7 +11,7 @@ from problems.knapsack_problem.knapsack_abs_solver import (
 POPULATION_LIMIT = 1000
 EPOCH_CNT = 100
 BRUTE_FORCE_BOUND = 5
-TIME_LIMIT = 10
+TIME_LIMIT = 5
 
 class GeneticSolver(KnapsackAbstractSolver):
     """Класс для решения задачи о рюкзаке с использованием генетического алгоритма."""
@@ -65,16 +65,17 @@ class GeneticSolver(KnapsackAbstractSolver):
                 child1, child2 = self.__cross_items(parents[i], parents[i + 1])
                 
                 for child in (child1, child2):
-                    for _ in range(self.item_cnt):
-                        if time_limit_sec is not None and time.perf_counter() - start_time >= time_limit_sec:
-                            break
+                    if time_limit_sec is not None and time.perf_counter() - start_time >= time_limit_sec:
+                        break
                             
+                    for mut in range(3):
                         fit = self.__get_fit(child)
                         is_duplicate = child in self.__population or child in progeny
                         if fit > 0 and not is_duplicate:
                             progeny[child] = fit
                             break
-                        child = self.__mutation(child)
+                        if mut < 2:
+                            child = self.__mutation(child)
                     
                     if time_limit_sec is not None and time.perf_counter() - start_time >= time_limit_sec:
                         break
@@ -194,5 +195,5 @@ if __name__ == "__main__":
     print(f"Ограничение вместимости: {weight_limit}")
     
     solver = GeneticSolver(weights, costs, weight_limit)
-    result = solver.get_knapsack(epoch_cnt=100, time_limit_sec=TIME_LIMIT)
+    result = solver.get_knapsack(epoch_cnt=100, time_limit_sec=None)
     print(f"Максимальная стоимость: {result.cost}, индексы предметов: {result.items}")
