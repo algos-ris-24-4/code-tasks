@@ -72,21 +72,22 @@ class GeneticSolver(KnapsackAbstractSolver):
             return solver.get_knapsack()
 
         for _ in range(epoch_cnt):
-            
             parents_count = len(self.__population) // 2 
-            ancestors_gen_nums = self.__choose_ancestors_for_crossing(parents_count)  # TODO: добавить вычисление количества родителей
+            ancestors_gen_nums = self.__choose_ancestors_for_crossing(parents_count)
 
             children = self.__cross_population(list(ancestors_gen_nums))
 
-            mut_children = []
+            mut_children = set()
+
             for child in children:
                 if rnd.random() < 0.1:
-                    mut_children.append(self.__mutation(child))
-                else: mut_children.append(child)
+                    mut_child_chrom = self.__mutation_chrom_wrap(child.chromosome)
+                    mut_children.add(Individ(int(mut_child_chrom, 2), mut_child_chrom, self.__get_fit(mut_child_chrom)))
+                else: 
+                    mut_children.add(child)
 
             self.__update_population(mut_children, ancestors_gen_nums)
 
-        # Лучшая особь в популяции и лучшая хромосома
         best_ind = max(self.__population.values(), key=lambda x: x.fitness)
         best_chrom = best_ind.chromosome
         
@@ -120,8 +121,7 @@ class GeneticSolver(KnapsackAbstractSolver):
             chrom = self.__get_chromosome(num)
             fit = self.__get_fit(chrom)
 
-            while curr_population.get(num) != None or self.get_weight(
-                self.__get_items_selection_flags(chrom)) > self.weight_limit:
+            while curr_population.get(num) is not None or not(self.__is_individ_valid(chrom)):
                 num = rnd.randint(0, 2**self.item_cnt - 1)
                 chrom = self.__get_chromosome(num)
                 fit = self.__get_fit(chrom)
@@ -132,54 +132,49 @@ class GeneticSolver(KnapsackAbstractSolver):
     
 
     def __update_population(self, children: list[Individ], ancestors_gen_numbers: set[int]) -> None:
-        
-        
-        for adding_individ in children:
+        sorted_individs = sorted(self.__population.values(), key=lambda idv: idv.fitness)         
+        removed_individs: set[int] = set() 
 
-            if adding_individ.genetic_number in self.__population:
-                adding_individ = self.__mutation(adding_individ)
-            
-                for _ in range(3):
-                    if adding_individ.genetic_number in self.__population:
-                        adding_individ = self.__mutation(adding_individ)
-                    else:
-                        break
-                            
-            sorted_individs = sorted(self.__population.values(), key=lambda idv: idv.fitness)              
+        for adding_individ in children:
             removing_individ = None
+
+            if not self.__is_individ_valid(adding_individ.chromosome):
+                continue
+            if adding_individ.genetic_number in self.__population:
+                continue
+
             for indv in sorted_individs:
-                if indv.genetic_number not in ancestors_gen_numbers:
+                if indv.genetic_number not in ancestors_gen_numbers and indv.genetic_number not in removed_individs:
                     removing_individ = indv
                     break
+
             if removing_individ is None:
                 break
 
             del self.__population[removing_individ.genetic_number]
+            removed_individs.add(removing_individ.genetic_number)
             self.__population[adding_individ.genetic_number] = adding_individ
 
 
-
     def __choose_ancestors_for_crossing(self, ancestors_count: int) -> set[int]:
-        ancestors = set()
-
+        """Выбор особей для скрещивания методом рулетки (без дубликатов)."""
+        ancestors: set[int] = set()
         total_fitness_sum = sum(idv.fitness for idv in self.__population.values())
-
-        if total_fitness_sum == 0:
-            numbers = list(self.__population.keys())
-            needed = min(ancestors_count, len(numbers))
-            while len(ancestors) < needed:
-                ancestors.add(rnd.choice(numbers))
-            return ancestors
         
-        while len(ancestors) < ancestors_count:
+        max_attempts = ancestors_count * 10
+        attempts = 0
+
+        while len(ancestors) < ancestors_count and attempts < max_attempts:
             roulette_choice = rnd.randint(0, total_fitness_sum - 1)
-            
             current_fitness_sum = 0
+            
             for idv in self.__population.values():
                 current_fitness_sum += idv.fitness
-                if roulette_choice <= current_fitness_sum:
+                if roulette_choice < current_fitness_sum:
                     ancestors.add(idv.genetic_number)
                     break
+            
+            attempts += 1
 
         return ancestors
 
@@ -198,50 +193,59 @@ class GeneticSolver(KnapsackAbstractSolver):
         return children
 
 
-
     def __cross_items(self, ancestor1: Individ, ancestor2: Individ) -> tuple[Individ, Individ]:
         """Создание разреза и формирование новых хромосом"""
 
-        cut_point = rnd.randint(1, self.item_cnt-1)
+        cut_point = rnd.randint(1, self.item_cnt - 1)
 
         child1_chrom = ancestor1.chromosome[:cut_point] + ancestor2.chromosome[cut_point:]
         child2_chrom = ancestor2.chromosome[:cut_point] + ancestor1.chromosome[cut_point:]
         
-        child1_num = int(child1_chrom, 2)
-        child2_num = int(child2_chrom, 2)
-        child1_fit = self.__get_fit(child1_chrom)
-        child2_fit = self.__get_fit(child2_chrom)
+        if self.__is_need_mutaion(child1_chrom):
+            child1_chrom = self.__mutation_chrom_wrap(child1_chrom)
 
-        return (
-            Individ(child1_num,child1_chrom,child1_fit),
-            Individ(child2_num,child2_chrom,child2_fit)
-        )
+        if self.__is_need_mutaion(child2_chrom):
+            child2_chrom = self.__mutation_chrom_wrap(child2_chrom)
+
+        child1 = Individ(int(child1_chrom, 2), child1_chrom, self.__get_fit(child1_chrom))
+        child2 = Individ(int(child2_chrom, 2), child2_chrom, self.__get_fit(child2_chrom))
+
+        return (child1, child2)
 
 
-    def __mutation(self, item_set: Individ) -> Individ:
+    def __mutation_chrom(self, chrom: str) -> str:
+        chrom_lst = list(chrom)
+        mut_point = rnd.randint(0, self.item_cnt - 1)
+
+        if chrom_lst[mut_point] == '0':
+            chrom_lst[mut_point] = '1'
+        else: 
+            chrom_lst[mut_point] = '0'
+
+        return ''.join(chrom_lst)        
+
+
+    def __is_need_mutaion(self, chrom: str):
+        return not(self.__is_individ_valid(chrom)) or self.__population.get(int(chrom, 2)) is not None
+
+
+    def __mutation_chrom_wrap(self, chrom: str) -> str:
         """Метод мутации хромосомы отдельной особи"""
 
-        chrom = list(item_set.chromosome)
+        new_chrom = self.__mutation_chrom(chrom)
+        attempt = 0
+        while self.__is_need_mutaion(new_chrom) and attempt < 1000:
+            new_chrom = self.__mutation_chrom(chrom)
+            attempt += 1
+        return new_chrom
 
-        mut_point = rnd.randint(0, self.item_cnt -1)
 
-        if chrom[mut_point] == '0':
-            chrom[mut_point] = '1'
-        else: 
-            chrom[mut_point] = '0'
-
-        new_chrom = ''.join(chrom)
-        new_num_mut_chrom = int(new_chrom, 2)
-        new_fit_mut_chrom = self.__get_fit(new_chrom)
-
-        return Individ(new_num_mut_chrom,new_chrom,new_fit_mut_chrom)
+    def __is_individ_valid(self, chromosome: str) -> bool:
+        return self.get_weight(self.__get_items_selection_flags(chromosome)) <= self.weight_limit
 
 
     def __get_fit(self, chromosome: str) -> int:
-        current = self.__get_items_selection_flags(chromosome)
-        if self.get_weight(current) > self.weight_limit:
-            return 0
-        else: return self.get_cost(current)
+        return self.get_cost(self.__get_items_selection_flags(chromosome))
 
 
 if __name__ == "__main__":
